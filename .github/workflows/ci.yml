@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Minimal permissions for all jobs by default.
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linting tools
+        run: pip install ruff mypy
+
+      - name: Ruff – style and import checks
+        run: ruff check flowger/ tests/
+
+      - name: Mypy – static type checking
+        run: mypy flowger/
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests with coverage
+        run: pytest tests/ -v --cov=flowger --cov-report=term-missing
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tools and package
+        run: pip install bandit pip-audit -e "."
+
+      - name: Bandit – static security analysis
+        # -ll = report only medium+ severity issues
+        run: bandit -r flowger/ -ll
+
+      - name: pip-audit – dependency vulnerability scan
+        run: pip-audit

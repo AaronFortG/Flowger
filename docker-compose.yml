@@ -1,0 +1,17 @@
+services:
+  flowger:
+    build: .
+    volumes:
+      # Persist the SQLite database between runs.
+      - ./data:/data
+      # CSV exports land here on the host.
+      - ./exports:/exports
+    environment:
+      DATABASE_URL: sqlite:////data/flowger.db
+      EXPORTS_DIR: /exports
+      PROVIDER: stub
+      LOG_LEVEL: INFO
+    # Override the default CMD to run a specific command, for example:
+    #   docker compose run flowger discover
+    #   docker compose run flowger sync-all
+    #   docker compose run flowger export-all
