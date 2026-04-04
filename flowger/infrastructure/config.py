@@ -16,6 +16,18 @@ class Settings(BaseSettings):
 
     database_path: str = Field("flowger.db", description="Path to the local SQLite database file")
 
+    # CLI defaults — centralised here so they can be overridden via environment variables
+    default_bank: str = Field("Imagin", description="Default bank name for CLI commands")
+    default_country: str = Field("ES", description="Default country code for CLI commands")
+    default_redirect_url: str = Field(
+        "http://localhost:8000/callback",
+        description="Default OAuth redirect URL",
+    )
+    default_export_file: str = Field(
+        "transactions.csv",
+        description="Default output file path for the export command",
+    )
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

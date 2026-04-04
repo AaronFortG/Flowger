@@ -40,3 +40,18 @@ def test_sqlite_account_repository_saves_accounts(tmp_path: Path) -> None:
         cursor.execute("SELECT name FROM accounts WHERE id = 'acc_1'")
         row = cursor.fetchone()
         assert row[0] == "Checking Updated"
+
+
+def test_sqlite_account_repository_returns_domain_objects(tmp_path: Path) -> None:
+    """Verify that get_accounts returns proper Account domain objects."""
+    db_path = str(tmp_path / "test.db")
+    init_db(db_path)
+    repo = SqliteAccountRepository(db_path)
+    repo.save_accounts([Account(id="acc_x", iban="ES99", name="Test", currency="USD")])
+
+    accounts = repo.get_accounts()
+
+    assert len(accounts) == 1
+    assert isinstance(accounts[0], Account)
+    assert accounts[0].id == "acc_x"
+    assert accounts[0].currency == "USD"

@@ -3,6 +3,7 @@ import logging
 from flowger.application.banking import BankProvider
 from flowger.application.repositories import AccountRepository
 from flowger.application.transaction_repository import TransactionRepository
+from flowger.domain.exceptions import BankProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,6 @@ class SyncTransactionsUseCase:
                     session_id=session_id, account_id=account.id
                 )
                 self.__transaction_repository.save_transactions(transactions)
-            except Exception as e:
+            except BankProviderError as e:
                 logger.error("Failed to sync transactions for account %s: %s", account.id, e)
                 continue

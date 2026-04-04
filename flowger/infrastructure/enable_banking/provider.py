@@ -1,27 +1,47 @@
 import datetime
 from decimal import Decimal
+from typing import Any
 
-from flowger.application.banking import BankProvider
 from flowger.domain.account import Account
 from flowger.domain.bank_session import BankSession
 from flowger.domain.transaction import Transaction
 from flowger.infrastructure.enable_banking.client import EnableBankingClient
 
+_AUTH_ENDPOINT = "/auth"
+_SESSIONS_ENDPOINT = "/sessions"
+_ACCOUNTS_ENDPOINT = "/accounts"
+_TRANSACTIONS_ENDPOINT = "/accounts/{account_id}/transactions"
+_AUTH_STATE = "flowger_sync"
+_ACCESS_VALID_DAYS = 180
 
-class EnableBankingProvider(BankProvider):
+
+def _compute_valid_until(days: int = _ACCESS_VALID_DAYS) -> str:
+    """Return an ISO-8601 UTC timestamp 'days' from now, as required by EnableBanking."""
+    until = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=days)
+    return until.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _resolve_description(tx: dict[str, Any]) -> str:
+    """Return the best available description for a transaction."""
+    return (
+        tx.get("creditor_name")
+        or tx.get("debtor_name")
+        or tx.get("remittance_information_unstructured")
+        or "No description"
+    )
+
+
+class EnableBankingProvider:
     """Adapts EnableBanking HTTP API to the application's BankProvider port."""
 
-    _ENDPOINTS = {
-        "AUTH": "/auth",
-        "SESSIONS": "/sessions",
-        "ACCOUNTS": "/accounts",
-        "TRANSACTIONS": "/accounts/{account_id}/transactions",
-    }
-    _AUTH_STATE = "flowger_sync"
-    _DEFAULT_VALID_UNTIL = "2026-12-31T23:59:59Z"
-
-    def __init__(self, app_id: str, private_key_path: str, environment: str) -> None:
-        self.__client = EnableBankingClient(
+    def __init__(
+        self,
+        app_id: str,
+        private_key_path: str,
+        environment: str,
+        client: EnableBankingClient | None = None,
+    ) -> None:
+        self.__client = client or EnableBankingClient(
             app_id=app_id,
             private_key_path=private_key_path,
             environment=environment,
@@ -34,7 +54,7 @@ class EnableBankingProvider(BankProvider):
         """
         payload = {
             "access": {
-                "valid_until": self._DEFAULT_VALID_UNTIL,
+                "valid_until": _compute_valid_until(),
                 "balances": {},
                 "transactions": {},
             },
@@ -42,10 +62,10 @@ class EnableBankingProvider(BankProvider):
                 "name": bank_name,
                 "country": country,
             },
-            "state": self._AUTH_STATE,
+            "state": _AUTH_STATE,
             "redirect_url": redirect_url,
         }
-        response = self.__client.post(self._ENDPOINTS["AUTH"], json=payload)
+        response = self.__client.post(_AUTH_ENDPOINT, json=payload)
         url: str = response.get("url", "")
         return url
 
@@ -54,7 +74,7 @@ class EnableBankingProvider(BankProvider):
         Exchange the redirect authorization code for a session_id.
         Returns a BankSession ready to be persisted.
         """
-        response = self.__client.post(self._ENDPOINTS["SESSIONS"], json={"code": code})
+        response = self.__client.post(_SESSIONS_ENDPOINT, json={"code": code})
         session_id: str = response["session_id"]
         return BankSession(
             session_id=session_id,
@@ -65,8 +85,8 @@ class EnableBankingProvider(BankProvider):
 
     def fetch_accounts(self, session_id: str) -> list[Account]:
         """Fetch all accounts available under the given authorized session."""
-        response = self.__client.get(f"{self._ENDPOINTS['ACCOUNTS']}?session_id={session_id}")
-        raw_accounts: list[dict[str, str]] = response.get("accounts", [])
+        response = self.__client.get(f"{_ACCOUNTS_ENDPOINT}?session_id={session_id}")
+        raw_accounts: list[dict[str, Any]] = response.get("accounts", [])
         return [
             Account(
                 id=acc["uid"],
@@ -79,19 +99,17 @@ class EnableBankingProvider(BankProvider):
 
     def fetch_transactions(self, session_id: str, account_id: str) -> list[Transaction]:
         """Fetch transactions for a specific account under an authorized session."""
-        endpoint = self._ENDPOINTS["TRANSACTIONS"].format(account_id=account_id)
+        endpoint = _TRANSACTIONS_ENDPOINT.format(account_id=account_id)
         response = self.__client.get(f"{endpoint}?session_id={session_id}")
-        raw_txs: list[dict[str, str]] = response.get("transactions", [])
+        raw_txs: list[dict[str, Any]] = response.get("transactions", [])
         return [
             Transaction(
                 id=tx["uid"],
                 account_id=account_id,
                 date=datetime.date.fromisoformat(tx["booking_date"]),
-                amount=Decimal(tx["amount"]),
+                amount=Decimal(str(tx["amount"])),
                 currency=tx["currency"],
-                description=tx.get("creditor_name")
-                or tx.get("debtor_name")
-                or tx.get("remittance_information_unstructured", "No description"),
+                description=_resolve_description(tx),
                 notes=tx.get("remittance_information_unstructured", ""),
             )
             for tx in raw_txs

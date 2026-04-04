@@ -3,6 +3,7 @@
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
+from flowger.application.sync_accounts import SyncAccountsUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.infrastructure.config import Settings, get_settings
 from flowger.infrastructure.enable_banking.provider import EnableBankingProvider
@@ -13,11 +14,6 @@ from flowger.infrastructure.sqlite import (
     SqliteTransactionRepository,
     init_db,
 )
-
-DEFAULT_BANK = "Imagin"
-DEFAULT_COUNTRY = "ES"
-DEFAULT_REDIRECT_URL = "http://localhost:8000/callback"
-DEFAULT_EXPORT_FILE = "transactions.csv"
 
 app = typer.Typer(help="Flowger - Bank transaction synchronization utility.")
 
@@ -39,18 +35,21 @@ def config() -> None:
         typer.echo("Configuration is valid.")
         typer.echo(f"Environment: {settings.enablebanking_environment}")
     except Exception as e:
-        typer.secho(f"Configuration error: {e}", fg=typer.colors.RED)
+        typer.secho(f"Configuration error: {e!r}", fg=typer.colors.RED)
         raise typer.Exit(1)
 
 
 @app.command()
 def login(
-    bank: str = typer.Option(DEFAULT_BANK, help=f"Bank name (e.g., '{DEFAULT_BANK}')"),
-    country: str = typer.Option(DEFAULT_COUNTRY, help=f"Country code (e.g., '{DEFAULT_COUNTRY}')"),
+    bank: str = typer.Option(None, help="Bank name (e.g., 'Imagin')"),
+    country: str = typer.Option(None, help="Country code (e.g., 'ES')"),
 ) -> None:
     """Generate an authorization URL to connect a bank account."""
     settings = get_settings()
     init_db(settings.database_path)
+
+    bank = bank or settings.default_bank
+    country = country or settings.default_country
 
     provider = _create_bank_provider(settings)
 
@@ -58,7 +57,7 @@ def login(
     url = provider.start_authorization(
         bank_name=bank,
         country=country,
-        redirect_url=DEFAULT_REDIRECT_URL,
+        redirect_url=settings.default_redirect_url,
     )
     typer.echo("\nOpen the following URL in your browser to authenticate:")
     typer.echo(f"\n{url}\n")
@@ -71,12 +70,15 @@ def login(
 @app.command()
 def authorize(
     code: str = typer.Option(..., help="Authorization code from the redirect URL"),
-    bank: str = typer.Option(DEFAULT_BANK, help="Bank name used during login"),
-    country: str = typer.Option(DEFAULT_COUNTRY, help="Country code used during login"),
+    bank: str = typer.Option(None, help="Bank name used during login"),
+    country: str = typer.Option(None, help="Country code used during login"),
 ) -> None:
     """Exchange the redirect code for a session and persist it locally."""
     settings = get_settings()
     init_db(settings.database_path)
+
+    bank = bank or settings.default_bank
+    country = country or settings.default_country
 
     provider = _create_bank_provider(settings)
     session_repo = SqliteSessionRepository(settings.database_path)
@@ -93,12 +95,15 @@ def authorize(
 
 @app.command()
 def sync(
-    bank: str = typer.Option(DEFAULT_BANK, help="Bank name to sync"),
-    country: str = typer.Option(DEFAULT_COUNTRY, help="Country code"),
+    bank: str = typer.Option(None, help="Bank name to sync"),
+    country: str = typer.Option(None, help="Country code"),
 ) -> None:
     """Fetch accounts from the bank and persist them locally."""
     settings = get_settings()
     init_db(settings.database_path)
+
+    bank = bank or settings.default_bank
+    country = country or settings.default_country
 
     session_repo = SqliteSessionRepository(settings.database_path)
     session = session_repo.get_latest_session(bank_name=bank, country=country)
@@ -114,20 +119,23 @@ def sync(
     account_repo = SqliteAccountRepository(settings.database_path)
 
     typer.echo(f"Fetching accounts for {bank} ({country})...")
-    accounts = provider.fetch_accounts(session_id=session.session_id)
-    account_repo.save_accounts(accounts)
+    use_case = SyncAccountsUseCase(provider=provider, repository=account_repo)
+    use_case.execute(session_id=session.session_id)
 
-    typer.secho(f"Synced {len(accounts)} account(s).", fg=typer.colors.GREEN)
+    typer.secho("Account sync complete.", fg=typer.colors.GREEN)
 
 
 @app.command()
 def sync_transactions(
-    bank: str = typer.Option(DEFAULT_BANK, help="Bank name to sync transactions for"),
-    country: str = typer.Option(DEFAULT_COUNTRY, help="Country code"),
+    bank: str = typer.Option(None, help="Bank name to sync transactions for"),
+    country: str = typer.Option(None, help="Country code"),
 ) -> None:
     """Fetch transactions for all synced accounts and persist them locally."""
     settings = get_settings()
     init_db(settings.database_path)
+
+    bank = bank or settings.default_bank
+    country = country or settings.default_country
 
     session_repo = SqliteSessionRepository(settings.database_path)
     session = session_repo.get_latest_session(bank_name=bank, country=country)
@@ -158,11 +166,13 @@ def sync_transactions(
 @app.command()
 def export(
     account_id: str = typer.Option(..., help="The UID of the account to export"),
-    output: str = typer.Option(DEFAULT_EXPORT_FILE, help="Path to the output CSV file"),
+    output: str = typer.Option(None, help="Path to the output CSV file"),
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
     init_db(settings.database_path)
+
+    output = output or settings.default_export_file
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)
     exporter = ActualCsvExporter()

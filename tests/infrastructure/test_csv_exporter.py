@@ -40,3 +40,15 @@ def test_actual_csv_exporter_writes_correct_format(tmp_path: Path) -> None:
     # tx2 should come first because it's earlier (2026-03-31)
     assert lines[1] == "2026-03-31,Salary,,1000.00"
     assert lines[2] == "2026-04-01,Grocery Store,,-50.00"
+
+
+def test_actual_csv_exporter_writes_header_only_for_empty_list(tmp_path: Path) -> None:
+    output_file = tmp_path / "empty.csv"
+    exporter = ActualCsvExporter()
+
+    exporter.write_transactions([], str(output_file))
+
+    content = output_file.read_text(encoding="utf-8")
+    lines = content.splitlines()
+    assert len(lines) == 1
+    assert lines[0] == "Date,Payee,Notes,Amount"

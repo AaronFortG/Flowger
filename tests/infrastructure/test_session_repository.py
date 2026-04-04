@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 
 import pytest
 
@@ -7,8 +8,8 @@ from flowger.infrastructure.sqlite import SqliteSessionRepository, init_db
 
 
 @pytest.fixture()
-def db_path(tmp_path: pytest.TempPathFactory) -> str:
-    path = str(tmp_path / "test.db")  # type: ignore[operator]
+def db_path(tmp_path: Path) -> str:
+    path = str(tmp_path / "test.db")
     init_db(path)
     return path
 

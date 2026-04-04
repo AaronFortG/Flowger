@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.domain.account import Account
+from flowger.domain.exceptions import BankProviderError
 from flowger.domain.transaction import Transaction
 
 
@@ -51,8 +52,8 @@ def test_sync_transactions_continues_on_failure() -> None:
     acc2 = Account(id="success", iban="IBAN2", name="Success", currency="EUR")
     account_repo.get_accounts.return_value = [acc1, acc2]
 
-    # First call fails, second succeeds
-    provider.fetch_transactions.side_effect = [Exception("API Error"), []]
+    # First call raises BankProviderError, second succeeds
+    provider.fetch_transactions.side_effect = [BankProviderError("API Error"), []]
 
     use_case = SyncTransactionsUseCase(
         provider=provider,
