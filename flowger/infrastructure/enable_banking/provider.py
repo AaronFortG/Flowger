@@ -87,7 +87,10 @@ class EnableBankingProvider(BankProvider):
                 date=datetime.date.fromisoformat(tx["booking_date"]),
                 amount=Decimal(tx["amount"]),
                 currency=tx["currency"],
-                description=tx.get("remittance_information_unstructured", "No description"),
+                description=tx.get("creditor_name")
+                or tx.get("debtor_name")
+                or tx.get("remittance_information_unstructured", "No description"),
+                notes=tx.get("remittance_information_unstructured", ""),
             )
             for tx in raw_txs
         ]

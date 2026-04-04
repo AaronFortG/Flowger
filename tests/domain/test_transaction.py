@@ -13,8 +13,10 @@ def test_create_transaction_success() -> None:
         currency="EUR",
         date=date(2026, 4, 4),
         description="Supermarket",
+        notes="Note 1",
     )
 
     assert txn.id == "txn_456"
     assert txn.amount == Decimal("-45.50")
     assert txn.date == date(2026, 4, 4)
+    assert txn.notes == "Note 1"

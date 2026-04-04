@@ -13,3 +13,4 @@ class Transaction(BaseModel):
     amount: Decimal  # Positive = credit, negative = debit
     currency: str
     description: str
+    notes: str = ""
