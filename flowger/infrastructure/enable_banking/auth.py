@@ -1,7 +1,11 @@
 import time
+
 import jwt
 
-def generate_bearer_token(app_id: str, private_key_path: str, expiration_seconds: int = 3600) -> str:
+
+def generate_bearer_token(
+    app_id: str, private_key_path: str, expiration_seconds: int = 3600
+) -> str:
     """
     Generate an RS256 JWT string as expected by EnableBanking's authorization header.
     """
@@ -24,11 +28,13 @@ def generate_bearer_token(app_id: str, private_key_path: str, expiration_seconds
     }
 
     # encode() returns a string in PyJWT >= 2.0.0
-    token = jwt.encode(
-        payload=payload,
-        key=private_key,
-        algorithm="RS256",
-        headers=headers
+    token = str(
+        jwt.encode(
+            payload=payload,
+            key=private_key,
+            algorithm="RS256",
+            headers=headers
+        )
     )
     
     return token

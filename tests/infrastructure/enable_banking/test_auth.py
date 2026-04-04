@@ -1,9 +1,9 @@
-import jwt
-import pytest
 from pathlib import Path
-
-from cryptography.hazmat.primitives.asymmetric import rsa
+from typing import Any
+import jwt  # type: ignore[import-not-found]
+import pytest
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from flowger.infrastructure.enable_banking.auth import generate_bearer_token
 
