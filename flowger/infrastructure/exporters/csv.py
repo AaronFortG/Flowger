@@ -10,6 +10,8 @@ class ActualCsvExporter(ExportService):
     Format: Date, Payee, Notes, Amount
     """
 
+    _HEADERS = ["Date", "Payee", "Notes", "Amount"]
+
     def write_transactions(self, transactions: list[Transaction], output_path: str) -> None:
         """Write transactions to a CSV file."""
         # Sort transactions by date (oldest first) for better import experience
@@ -18,7 +20,7 @@ class ActualCsvExporter(ExportService):
         with open(output_path, mode="w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             # Write header
-            writer.writerow(["Date", "Payee", "Notes", "Amount"])
+            writer.writerow(self._HEADERS)
 
             for tx in sorted_txs:
                 writer.writerow(

@@ -17,6 +17,8 @@ class EnableBankingProvider(BankProvider):
         "ACCOUNTS": "/accounts",
         "TRANSACTIONS": "/accounts/{account_id}/transactions",
     }
+    _AUTH_STATE = "flowger_sync"
+    _DEFAULT_VALID_UNTIL = "2026-12-31T23:59:59Z"
 
     def __init__(self, app_id: str, private_key_path: str, environment: str) -> None:
         self.__client = EnableBankingClient(
@@ -32,7 +34,7 @@ class EnableBankingProvider(BankProvider):
         """
         payload = {
             "access": {
-                "valid_until": "2026-12-31T23:59:59Z",
+                "valid_until": self._DEFAULT_VALID_UNTIL,
                 "balances": {},
                 "transactions": {},
             },
@@ -40,7 +42,7 @@ class EnableBankingProvider(BankProvider):
                 "name": bank_name,
                 "country": country,
             },
-            "state": "flowger_sync",
+            "state": self._AUTH_STATE,
             "redirect_url": redirect_url,
         }
         response = self.__client.post(self._ENDPOINTS["AUTH"], json=payload)
