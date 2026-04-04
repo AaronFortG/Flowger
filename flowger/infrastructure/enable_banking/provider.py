@@ -168,27 +168,29 @@ def _resolve_currency(tx: dict[str, Any]) -> str:
 def _resolve_payee(tx: dict[str, Any]) -> str:
     """Return the best available payee for a transaction."""
     indicator = str(tx.get("credit_debit_indicator", "")).upper()
+    
+    # Try to extract a structured remittance string if available
+    remittance = tx.get("remittance_information")
+    remittance_str = " ".join(remittance) if isinstance(remittance, list) else str(remittance) if remittance else ""
+
     if indicator == PaymentType.DEBIT:
         # It's an expense, so the payee is the creditor
         return (
             (tx.get("creditor") or {}).get("name")
-            or tx.get("remittance_information_unstructured")
+            or remittance_str
             or "Unknown Payee"
         )
     # It's income, so the payee is the debtor
     return (
         (tx.get("debtor") or {}).get("name")
-        or tx.get("remittance_information_unstructured")
+        or remittance_str
         or "Unknown Payee"
     )
 
 
 def _resolve_notes(tx: dict[str, Any]) -> str:
     """Return remittance information as a single string."""
-    unstructured = tx.get("remittance_information_unstructured")
-    if unstructured:
-        return str(unstructured)
-    structured = tx.get("remittance_information")
-    if isinstance(structured, list):
-        return " ".join(structured)
-    return ""
+    remittance = tx.get("remittance_information")
+    if isinstance(remittance, list):
+        return " ".join(remittance)
+    return str(remittance) if remittance else ""

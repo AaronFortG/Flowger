@@ -19,7 +19,7 @@ class EnableBankingClient:
             private_key_path=private_key_path,
         )
         # Client is reused across requests for connection pooling.
-        self.__http = httpx.Client()
+        self.__http = httpx.Client(timeout=30.0)
 
     def __get_headers(self) -> dict[str, str]:
         return {

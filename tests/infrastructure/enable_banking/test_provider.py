@@ -94,7 +94,7 @@ def test_fetch_transactions_maps_response_to_domain() -> None:
                 "transaction_amount": {"amount": "100.50", "currency": "EUR"},
                 "credit_debit_indicator": "DBIT",
                 "creditor": {"name": "Supermarket"},
-                "remittance_information_unstructured": "Weekly shop",
+                "remittance_information": ["Weekly shop"],
             }
         ]
     }
@@ -121,7 +121,7 @@ def test_fetch_transactions_payee_fallback() -> None:
                 "booking_date": "2026-04-01",
                 "transaction_amount": {"amount": "30.00", "currency": "EUR"},
                 "credit_debit_indicator": "DBIT",
-                "remittance_information_unstructured": "Invoice 42",
+                "remittance_information": ["Invoice 42"],
             }
         ]
     }
