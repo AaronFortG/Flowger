@@ -14,6 +14,8 @@ class Settings(BaseSettings):
         ..., description="Path to the RSA private key used for JWT signing"
     )
 
+    database_path: str = Field("flowger.db", description="Path to the local SQLite database file")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
