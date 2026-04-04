@@ -133,7 +133,7 @@ acc-xyz                                  ES00000000001              Checking Acc
 ### Step 4 — Sync transactions
 
 ```bash
-uv run flowger sync-transactions
+uv run flowger sync
 ```
 
 Expected output:

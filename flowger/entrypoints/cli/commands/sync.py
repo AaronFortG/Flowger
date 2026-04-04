@@ -11,7 +11,7 @@ from flowger.infrastructure.sqlite import (
 )
 
 
-def sync_transactions(
+def sync(
     bank: str = typer.Option(None, help="Bank name to sync transactions for"),
     country: str = typer.Option(None, help="Country code"),
 ) -> None:
