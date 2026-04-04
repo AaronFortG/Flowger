@@ -9,3 +9,7 @@ class AccountRepository(Protocol):
     def save_accounts(self, accounts: list[Account]) -> None:
         """Persist a list of accounts to local storage (insert or update)."""
         pass
+
+    def get_accounts(self) -> list[Account]:
+        """Retrieve all stored accounts from local storage."""
+        pass

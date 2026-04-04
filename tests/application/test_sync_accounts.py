@@ -1,5 +1,6 @@
 from flowger.application.sync_accounts import SyncAccountsUseCase
 from flowger.domain.account import Account
+from flowger.domain.transaction import Transaction
 
 
 class FakeBankProvider:
@@ -12,6 +13,9 @@ class FakeBankProvider:
     def fetch_accounts(self, session_id: str) -> list[Account]:
         self.__called = True
         return self.__accounts_to_return
+
+    def fetch_transactions(self, session_id: str, account_id: str) -> list[Transaction]:
+        return []
 
     @property
     def called(self) -> bool:
@@ -26,6 +30,9 @@ class FakeAccountRepository:
 
     def save_accounts(self, accounts: list[Account]) -> None:
         self.__saved_accounts.extend(accounts)
+
+    def get_accounts(self) -> list[Account]:
+        return self.__saved_accounts
 
     @property
     def saved_accounts(self) -> list[Account]:

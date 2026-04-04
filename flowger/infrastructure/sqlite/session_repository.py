@@ -2,6 +2,7 @@ import datetime
 import sqlite3
 
 from flowger.application.session_repository import SessionRepository
+
 # Use relative import for BankSession due to current package structure
 from flowger.domain.bank_session import BankSession
 
