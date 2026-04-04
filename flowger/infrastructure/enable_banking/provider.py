@@ -76,7 +76,7 @@ class EnableBankingProvider:
         raw_accounts: list[dict[str, Any]] = response.get("accounts", [])
         bank_name_resp = (response.get("aspsp") or {}).get("name", bank_name)
 
-        accounts = []
+        accounts: list[Account] = []
         for acc in raw_accounts:
             iban = acc.get("iban") or (acc.get("account_id") or {}).get("iban", "")
             acc_name = acc.get("product") or acc.get("name") or acc.get("details") or "Account"

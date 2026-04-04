@@ -6,8 +6,8 @@ from flowger.infrastructure.sqlite import init_db
 
 
 def login(
-    bank: str = typer.Option(None, help="Bank name (e.g., 'Imagin')"),
-    country: str = typer.Option(None, help="Country code (e.g., 'ES')"),
+    bank: str | None = typer.Option(None, help="Bank name (e.g., 'Imagin')"),
+    country: str | None = typer.Option(None, help="Country code (e.g., 'ES')"),
 ) -> None:
     """Generate an authorization URL to connect a bank account."""
     settings = get_settings()

@@ -52,6 +52,12 @@ class EnableBankingClient:
                 f"GET {endpoint} failed with status {e.response.status_code}: {e.response.text}"
             ) from e
 
+    def __enter__(self) -> "EnableBankingClient":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
     def close(self) -> None:
         """Release the underlying HTTP connection pool."""
         self.__http.close()

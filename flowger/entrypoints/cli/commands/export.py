@@ -8,7 +8,7 @@ from flowger.infrastructure.sqlite import SqliteTransactionRepository, init_db
 
 def export(
     account_id: str = typer.Option(..., help="The UID of the account to export"),
-    output: str = typer.Option(None, help="Path to the output CSV file"),
+    output: str | None = typer.Option(None, help="Path to the output CSV file"),
     delimiter: str = typer.Option(",", help="CSV value separator"),
     safe: bool = typer.Option(True, help="Sanitize fields (strip quotes and active delimiter)"),
     new_only: bool = typer.Option(

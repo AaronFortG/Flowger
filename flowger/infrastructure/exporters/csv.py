@@ -28,9 +28,19 @@ class ActualCsvExporter(ExportService):
 
             for tx in sorted_txs:
                 if self.__safe:
-                    payee_val = tx.payee.replace('"', "").replace("'", "")
+                    payee_val = (
+                        tx.payee.replace('"', "")
+                        .replace("'", "")
+                        .replace("\n", " ")
+                        .replace("\r", " ")
+                    )
                     payee_val = payee_val.replace(self.__delimiter, " ")
-                    notes_val = tx.notes.replace('"', "").replace("'", "")
+                    notes_val = (
+                        tx.notes.replace('"', "")
+                        .replace("'", "")
+                        .replace("\n", " ")
+                        .replace("\r", " ")
+                    )
                     notes_val = notes_val.replace(self.__delimiter, " ")
                 else:
                     payee_val = tx.payee

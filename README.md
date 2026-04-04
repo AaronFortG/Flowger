@@ -159,7 +159,7 @@ Available CLI Flags:
 * `--safe` / `--no-safe`: Toggles string sterilization (defaults to `--safe`). 
   
 **About `safe` mode and Quotes:**
-Actual Budget requires precise CSV imports and often crashes when double-quotes are encountered. By default, `csv.writer` automatically wraps fields in double-quotes (`""`) whenever a field string visually contains the current `--delimiter`. To protect brittle importers, Flowger natively defaults to `--safe`, which actively strips and forcefully sanitizes strings (e.g. converting nested commas into spaces if `,` is the delimiter) prior to CSV writing to ensure quotes are never generated. Pass `--no-safe` if you want raw, unadulterated quotes emitted dynamically.
+Actual Budget requires precise CSV imports and often crashes when double-quotes are encountered. By default, `csv.writer` automatically wraps fields in double-quotes (`""`) when a field contains characters that require quoting, such as the current `--delimiter`. To protect brittle importers, Flowger defaults to `--safe`, which strips quote characters and sanitizes strings that contain the active delimiter (for example, converting nested commas into spaces if `,` is the delimiter) before CSV writing to reduce the likelihood of generated quotes. Some content, such as embedded newlines, may still cause `csv.writer` to quote a field. Pass `--no-safe` if you want less-sanitized output written as-is apart from normal CSV escaping rules.
 
 Expected output:
 ```

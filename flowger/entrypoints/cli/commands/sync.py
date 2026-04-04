@@ -12,8 +12,8 @@ from flowger.infrastructure.sqlite import (
 
 
 def sync(
-    bank: str = typer.Option(None, help="Bank name to sync transactions for"),
-    country: str = typer.Option(None, help="Country code"),
+    bank: str | None = typer.Option(None, help="Bank name to sync transactions for"),
+    country: str | None = typer.Option(None, help="Country code"),
 ) -> None:
     """Fetch transactions for all synced accounts and persist them locally."""
     settings = get_settings()

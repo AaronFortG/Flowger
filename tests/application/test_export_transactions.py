@@ -47,3 +47,24 @@ def test_export_transactions_empty_account() -> None:
     use_case.execute(account_id="acc1", output_path="out.csv")
 
     export_service.write_transactions.assert_called_once_with([], "out.csv")
+
+
+def test_export_transactions_new_only_marks_as_exported() -> None:
+    """Verify that new_only=True marks transactions as exported with the current time."""
+    tx = _make_transaction()
+    transaction_repo = Mock()
+    transaction_repo.get_unexported_transactions.return_value = [tx]
+    export_service = Mock()
+
+    use_case = ExportTransactionsUseCase(
+        transaction_repository=transaction_repo,
+        export_service=export_service,
+    )
+    use_case.execute(account_id="acc1", output_path="out.csv", new_only=True)
+
+    transaction_repo.get_unexported_transactions.assert_called_once_with("acc1")
+    export_service.write_transactions.assert_called_once_with([tx], "out.csv")
+    transaction_repo.save_transactions.assert_called_once()
+    saved_txs = transaction_repo.save_transactions.call_args[0][0]
+    assert len(saved_txs) == 1
+    assert saved_txs[0].exported_at is not None

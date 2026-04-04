@@ -11,8 +11,8 @@ from flowger.infrastructure.sqlite import (
 
 def authorize(
     code: str = typer.Option(..., help="Authorization code from the redirect URL"),
-    bank: str = typer.Option(None, help="Bank name used during login"),
-    country: str = typer.Option(None, help="Country code used during login"),
+    bank: str | None = typer.Option(None, help="Bank name used during login"),
+    country: str | None = typer.Option(None, help="Country code used during login"),
 ) -> None:
     """Exchange the redirect code for a session and persist it locally."""
     settings = get_settings()
