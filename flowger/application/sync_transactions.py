@@ -1,6 +1,10 @@
+import logging
+
 from flowger.application.banking import BankProvider
 from flowger.application.repositories import AccountRepository
 from flowger.application.transaction_repository import TransactionRepository
+
+logger = logging.getLogger(__name__)
 
 
 class SyncTransactionsUseCase:
@@ -21,7 +25,11 @@ class SyncTransactionsUseCase:
         accounts = self.__account_repository.get_accounts()
 
         for account in accounts:
-            transactions = self.__provider.fetch_transactions(
-                session_id=session_id, account_id=account.id
-            )
-            self.__transaction_repository.save_transactions(transactions)
+            try:
+                transactions = self.__provider.fetch_transactions(
+                    session_id=session_id, account_id=account.id
+                )
+                self.__transaction_repository.save_transactions(transactions)
+            except Exception as e:
+                logger.error("Failed to sync transactions for account %s: %s", account.id, e)
+                continue

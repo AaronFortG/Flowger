@@ -22,7 +22,7 @@ DEFAULT_EXPORT_FILE = "transactions.csv"
 app = typer.Typer(help="Flowger - Bank transaction synchronization utility.")
 
 
-def _get_provider(settings: Settings) -> EnableBankingProvider:
+def _create_bank_provider(settings: Settings) -> EnableBankingProvider:
     """Helper to instantiate the BankProvider with current settings."""
     return EnableBankingProvider(
         app_id=settings.enablebanking_app_id,
@@ -52,7 +52,7 @@ def login(
     settings = get_settings()
     init_db(settings.database_path)
 
-    provider = _get_provider(settings)
+    provider = _create_bank_provider(settings)
 
     typer.echo(f"Requesting authorization for {bank} ({country})...")
     url = provider.start_authorization(
@@ -78,7 +78,7 @@ def authorize(
     settings = get_settings()
     init_db(settings.database_path)
 
-    provider = _get_provider(settings)
+    provider = _create_bank_provider(settings)
     session_repo = SqliteSessionRepository(settings.database_path)
 
     typer.echo(f"Authorizing session for {bank} ({country})...")
@@ -110,7 +110,7 @@ def sync(
         )
         raise typer.Exit(1)
 
-    provider = _get_provider(settings)
+    provider = _create_bank_provider(settings)
     account_repo = SqliteAccountRepository(settings.database_path)
 
     typer.echo(f"Fetching accounts for {bank} ({country})...")
@@ -139,7 +139,7 @@ def sync_transactions(
         )
         raise typer.Exit(1)
 
-    provider = _get_provider(settings)
+    provider = _create_bank_provider(settings)
     account_repo = SqliteAccountRepository(settings.database_path)
     transaction_repo = SqliteTransactionRepository(settings.database_path)
 

@@ -10,9 +10,14 @@ class SqliteTransactionRepository(TransactionRepository):
 
     _TABLE_NAME = "transactions"
     _QUERY_SAVE = f"""
-        INSERT OR IGNORE INTO {_TABLE_NAME}
+        INSERT INTO {_TABLE_NAME}
         (id, account_id, date, amount, currency, description, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?);
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            date=excluded.date,
+            amount=excluded.amount,
+            description=excluded.description,
+            notes=excluded.notes;
     """
     _QUERY_GET_FOR_ACCOUNT = f"""
         SELECT id, account_id, date, amount, currency, description, notes
