@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import Any
-import jwt  # type: ignore[import-not-found]
+
+import jwt
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa

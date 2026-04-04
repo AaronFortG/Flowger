@@ -9,7 +9,7 @@ class SyncAccountsUseCase:
         self.__provider = provider
         self.__repository = repository
 
-    def execute(self) -> None:
-        """Fetch accounts from the provider and save them locally."""
-        accounts = self.__provider.fetch_accounts()
+    def execute(self, session_id: str) -> None:
+        """Fetch accounts from the provider for the given session and save them locally."""
+        accounts = self.__provider.fetch_accounts(session_id=session_id)
         self.__repository.save_accounts(accounts)

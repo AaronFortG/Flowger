@@ -9,7 +9,7 @@ class FakeBankProvider:
         self.__accounts_to_return = accounts_to_return
         self.__called = False
 
-    def fetch_accounts(self) -> list[Account]:
+    def fetch_accounts(self, session_id: str) -> list[Account]:
         self.__called = True
         return self.__accounts_to_return
 
@@ -42,7 +42,7 @@ def test_sync_accounts_use_case() -> None:
     use_case = SyncAccountsUseCase(provider=fake_provider, repository=fake_repo)
 
     # 2. Act
-    use_case.execute()
+    use_case.execute(session_id="fake-session")
 
     # 3. Assert
     assert fake_provider.called is True
