@@ -8,4 +8,4 @@ class AccountRepository(Protocol):
 
     def save_accounts(self, accounts: list[Account]) -> None:
         """Persist a list of accounts to local storage (insert or update)."""
-        ...
+        pass

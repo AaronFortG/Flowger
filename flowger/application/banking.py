@@ -8,4 +8,4 @@ class BankProvider(Protocol):
 
     def fetch_accounts(self, session_id: str) -> list[Account]:
         """Fetch all accounts available for the given authorized session."""
-        ...
+        pass
