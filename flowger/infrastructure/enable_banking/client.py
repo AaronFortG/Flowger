@@ -21,7 +21,7 @@ class EnableBankingClient:
         # Client is reused across requests for connection pooling.
         self.__http = httpx.Client()
 
-    def _get_headers(self) -> dict[str, str]:
+    def __get_headers(self) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {self.__token}",
             "Content-Type": "application/json",
@@ -31,7 +31,7 @@ class EnableBankingClient:
         """Perform a POST request and return the parsed JSON body."""
         url = f"{self.BASE_URL}{endpoint}"
         try:
-            response = self.__http.post(url, json=json, headers=self._get_headers())
+            response = self.__http.post(url, json=json, headers=self.__get_headers())
             response.raise_for_status()
             data: dict[str, Any] = response.json()
             return data
@@ -44,7 +44,7 @@ class EnableBankingClient:
         """Perform a GET request and return the parsed JSON body."""
         url = f"{self.BASE_URL}{endpoint}"
         try:
-            response = self.__http.get(url, headers=self._get_headers())
+            response = self.__http.get(url, headers=self.__get_headers())
             response.raise_for_status()
             data: dict[str, Any] = response.json()
             return data

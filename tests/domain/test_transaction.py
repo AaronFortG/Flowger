@@ -1,6 +1,7 @@
-import pytest
 from datetime import date
 from decimal import Decimal
+
+import pytest
 from pydantic import ValidationError
 
 from flowger.domain.transaction import Transaction

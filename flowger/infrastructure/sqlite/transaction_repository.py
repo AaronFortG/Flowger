@@ -59,7 +59,7 @@ class SqliteTransactionRepository:
                 date=row[2],
                 amount=Decimal(row[3]),
                 currency=row[4],
-                description=row[5],
+                payee=row[5],
                 notes=row[6],
             )
             for row in rows

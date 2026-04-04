@@ -38,9 +38,10 @@ def generate_bearer_token(
         "jti": str(uuid.uuid4()),
     }
 
-    return jwt.encode(
+    token = jwt.encode(
         payload=payload,
         key=private_key,
         algorithm="RS256",
         headers=headers,
     )
+    return str(token)

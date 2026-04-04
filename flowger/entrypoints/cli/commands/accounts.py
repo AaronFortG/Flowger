@@ -10,11 +10,11 @@ def accounts() -> None:
     init_db(settings.database_path)
     account_repo = SqliteAccountRepository(settings.database_path)
     stored = account_repo.get_accounts()
-    
+
     if not stored:
         typer.echo("No accounts found. Run `flowger authorize` first.")
         raise typer.Exit(0)
-        
+
     typer.echo(f"{'ID':<40} {'IBAN':<26} {'Name':<20} Currency")
     typer.echo("-" * 96)
     for acc in stored:

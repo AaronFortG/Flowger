@@ -64,16 +64,18 @@ def test_authorize_session_exchanges_code_for_session_id_and_returns_accounts() 
                 "currency": "EUR",
             }
         ],
-        "aspsp": {"name": "ImaginBank"}
+        "aspsp": {"name": "ImaginBank"},
     }
 
-    session, accounts = provider.authorize_session(code="auth-code-123", bank_name="Imagin", country="ES")
+    session, accounts = provider.authorize_session(
+        code="auth-code-123", bank_name="Imagin", country="ES"
+    )
 
     assert session.session_id == "sess-xyz789"
     assert session.bank_name == "Imagin"
     assert session.country == "ES"
     mock_client.post.assert_called_once_with("/sessions", json={"code": "auth-code-123"})
-    
+
     assert len(accounts) == 1
     assert accounts[0].id == "acc-1"
     assert accounts[0].iban == "ES00000000001"
@@ -105,9 +107,7 @@ def test_fetch_transactions_maps_response_to_domain() -> None:
     assert str(tx.amount) == "-100.50"
     assert tx.payee == "Supermarket"
     assert tx.notes == "Weekly shop"
-    mock_client.get.assert_called_once_with(
-        "/accounts/acc-1/transactions?session_id=sess-xyz789"
-    )
+    mock_client.get.assert_called_once_with("/accounts/acc-1/transactions?session_id=sess-xyz789")
 
 
 def test_fetch_transactions_payee_fallback() -> None:

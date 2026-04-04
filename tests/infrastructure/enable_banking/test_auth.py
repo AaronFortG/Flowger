@@ -15,30 +15,27 @@ def test_private_key_path(tmp_path: Path) -> str:
     pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
+        encryption_algorithm=serialization.NoEncryption(),
     )
     key_path = tmp_path / "test_private.key"
     key_path.write_bytes(pem)
-    
+
     return str(key_path)
 
 
 def test_generate_bearer_token(test_private_key_path: str) -> None:
     """Verify the generated JWT has exactly the claims EnableBanking expects."""
-    token = generate_bearer_token(
-        app_id="test-app-id", 
-        private_key_path=test_private_key_path
-    )
-    
+    token = generate_bearer_token(app_id="test-app-id", private_key_path=test_private_key_path)
+
     # decode the unverified headers to check 'kid'
     headers = jwt.get_unverified_header(token)
     assert headers["alg"] == "RS256"
     assert headers["typ"] == "JWT"
     assert headers["kid"] == "test-app-id"
-    
+
     # decode the unverified claims
     payload = jwt.decode(token, options={"verify_signature": False})
-    
+
     assert payload["iss"] == "enablebanking.com"
     assert payload["aud"] == "api.enablebanking.com"
     assert "iat" in payload

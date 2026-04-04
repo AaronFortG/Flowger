@@ -27,7 +27,7 @@ def authorize(
 
     typer.echo(f"Authorizing session for {bank} ({country})...")
     session, accounts = provider.authorize_session(code=code, bank_name=bank, country=country)
-    
+
     session_repo.save_session(session)
     account_repo.save_accounts(accounts)
 
