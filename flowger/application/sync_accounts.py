@@ -1,12 +1,11 @@
-"""Application use cases containing business orchestration logic."""
-
-from flowger.application.ports import AccountRepository, BankProvider
+from flowger.application.banking import BankProvider
+from flowger.application.repositories import AccountRepository
 
 
 class SyncAccountsUseCase:
     """Use case to synchronize accounts from the provider to local storage."""
 
-    def __init__(self, provider: BankProvider, repository: AccountRepository):
+    def __init__(self, provider: BankProvider, repository: AccountRepository) -> None:
         self.provider = provider
         self.repository = repository
 

@@ -1,11 +1,11 @@
-from flowger.application.use_cases import SyncAccountsUseCase
-from flowger.domain.models import Account
+from flowger.application.sync_accounts import SyncAccountsUseCase
+from flowger.domain.account import Account
 
 
 class FakeBankProvider:
     """Mock provider to verify use case interaction."""
 
-    def __init__(self, accounts_to_return: list[Account]):
+    def __init__(self, accounts_to_return: list[Account]) -> None:
         self.accounts_to_return = accounts_to_return
         self.called = False
 
