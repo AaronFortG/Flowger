@@ -6,22 +6,30 @@ class FakeBankProvider:
     """Mock provider to verify use case interaction."""
 
     def __init__(self, accounts_to_return: list[Account]) -> None:
-        self.accounts_to_return = accounts_to_return
-        self.called = False
+        self.__accounts_to_return = accounts_to_return
+        self.__called = False
 
     def fetch_accounts(self) -> list[Account]:
-        self.called = True
-        return self.accounts_to_return
+        self.__called = True
+        return self.__accounts_to_return
+
+    @property
+    def called(self) -> bool:
+        return self.__called
 
 
 class FakeAccountRepository:
     """Mock repository to verify use case interaction."""
 
     def __init__(self) -> None:
-        self.saved_accounts: list[Account] = []
+        self.__saved_accounts: list[Account] = []
 
     def save_accounts(self, accounts: list[Account]) -> None:
-        self.saved_accounts.extend(accounts)
+        self.__saved_accounts.extend(accounts)
+
+    @property
+    def saved_accounts(self) -> list[Account]:
+        return self.__saved_accounts
 
 
 def test_sync_accounts_use_case() -> None:
