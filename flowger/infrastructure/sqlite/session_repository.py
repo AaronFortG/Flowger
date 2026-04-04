@@ -1,57 +1,9 @@
 import datetime
 import sqlite3
 
-from flowger.application.repositories import AccountRepository
 from flowger.application.session_repository import SessionRepository
-from flowger.domain.account import Account
+# Use relative import for BankSession due to current package structure
 from flowger.domain.bank_session import BankSession
-
-_SCHEMA_ACCOUNTS = """
-CREATE TABLE IF NOT EXISTS accounts (
-    id TEXT PRIMARY KEY,
-    iban TEXT NOT NULL,
-    name TEXT NOT NULL,
-    currency TEXT NOT NULL
-);
-"""
-
-_SCHEMA_SESSIONS = """
-CREATE TABLE IF NOT EXISTS sessions (
-    bank_name TEXT NOT NULL,
-    country   TEXT NOT NULL,
-    session_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    PRIMARY KEY (bank_name, country)
-);
-"""
-
-
-def init_db(db_path: str) -> None:
-    """Initialize the SQLite database schema."""
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(_SCHEMA_ACCOUNTS)
-        conn.execute(_SCHEMA_SESSIONS)
-
-
-class SqliteAccountRepository(AccountRepository):
-    """Concrete repository implementing Account persistence using SQLite."""
-
-    def __init__(self, db_path: str) -> None:
-        self.__db_path = db_path
-
-    def save_accounts(self, accounts: list[Account]) -> None:
-        """Insert or replace accounts in the database."""
-        query = """
-        INSERT INTO accounts (id, iban, name, currency)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-            iban=excluded.iban,
-            name=excluded.name,
-            currency=excluded.currency;
-        """
-        rows = [(acc.id, acc.iban, acc.name, acc.currency) for acc in accounts]
-        with sqlite3.connect(self.__db_path) as conn:
-            conn.executemany(query, rows)
 
 
 class SqliteSessionRepository(SessionRepository):

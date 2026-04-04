@@ -10,6 +10,7 @@ def test_create_transaction_success() -> None:
         id="txn_456",
         account_id="acc_123",
         amount=Decimal("-45.50"),
+        currency="EUR",
         date=date(2026, 4, 4),
         description="Supermarket",
     )

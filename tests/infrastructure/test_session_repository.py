@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from flowger.domain.bank_session import BankSession
-from flowger.infrastructure.database import SqliteSessionRepository, init_db
+from flowger.infrastructure.sqlite import SqliteSessionRepository, init_db
 
 
 @pytest.fixture()

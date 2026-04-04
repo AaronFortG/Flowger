@@ -5,10 +5,11 @@ from pydantic import BaseModel
 
 
 class Transaction(BaseModel):
-    """Core domain model representing a Ledger Transaction."""
+    """Core domain model representing a bank transaction."""
 
     id: str
     account_id: str
-    amount: Decimal
     date: date
+    amount: Decimal  # Positive = credit, negative = debit
+    currency: str
     description: str

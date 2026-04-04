@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from flowger.domain.account import Account
-from flowger.infrastructure.database import SqliteAccountRepository, init_db
+from flowger.infrastructure.sqlite import SqliteAccountRepository, init_db
 
 
 def test_sqlite_account_repository_saves_accounts(tmp_path: Path) -> None:

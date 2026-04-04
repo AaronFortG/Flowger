@@ -3,7 +3,7 @@
 import typer
 
 from flowger.infrastructure.config import get_settings
-from flowger.infrastructure.database import (
+from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
     SqliteSessionRepository,
     init_db,
