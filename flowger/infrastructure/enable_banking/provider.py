@@ -21,16 +21,6 @@ def _compute_valid_until(days: int = _ACCESS_VALID_DAYS) -> str:
     return until.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _resolve_description(tx: dict[str, Any]) -> str:
-    """Return the best available description for a transaction."""
-    return (
-        tx.get("creditor_name")
-        or tx.get("debtor_name")
-        or tx.get("remittance_information_unstructured")
-        or "No description"
-    )
-
-
 class EnableBankingProvider:
     """Adapts EnableBanking HTTP API to the application's BankProvider port."""
 
@@ -47,16 +37,16 @@ class EnableBankingProvider:
             environment=environment,
         )
 
-    def start_authorization(self, bank_name: str, country: str, redirect_url: str) -> str:
+    def start_authorization(
+        self, bank_name: str, country: str, redirect_url: str, psu_type: str = ""
+    ) -> str:
         """
         Initiate an authorization flow.
         Returns the authorization URL that the user must visit in their browser.
         """
-        payload = {
+        payload: dict[str, Any] = {
             "access": {
                 "valid_until": _compute_valid_until(),
-                "balances": {},
-                "transactions": {},
             },
             "aspsp": {
                 "name": bank_name,
@@ -65,52 +55,129 @@ class EnableBankingProvider:
             "state": _AUTH_STATE,
             "redirect_url": redirect_url,
         }
+        if psu_type:
+            payload["psu_type"] = psu_type
         response = self.__client.post(_AUTH_ENDPOINT, json=payload)
         url: str = response.get("url", "")
         return url
 
-    def authorize_session(self, code: str, bank_name: str, country: str) -> BankSession:
+    def authorize_session(self, code: str, bank_name: str, country: str) -> tuple[BankSession, list[Account]]:
         """
         Exchange the redirect authorization code for a session_id.
-        Returns a BankSession ready to be persisted.
+        Returns a tuple of (BankSession, list[Account]) ready to be persisted.
         """
         response = self.__client.post(_SESSIONS_ENDPOINT, json={"code": code})
         session_id: str = response["session_id"]
-        return BankSession(
+        
+        session = BankSession(
             session_id=session_id,
             bank_name=bank_name,
             country=country,
             created_at=datetime.datetime.now(tz=datetime.timezone.utc),
         )
-
-    def fetch_accounts(self, session_id: str) -> list[Account]:
-        """Fetch all accounts available under the given authorized session."""
-        response = self.__client.get(f"{_ACCOUNTS_ENDPOINT}?session_id={session_id}")
+        
         raw_accounts: list[dict[str, Any]] = response.get("accounts", [])
-        return [
-            Account(
-                id=acc["uid"],
-                iban=acc.get("iban", ""),
-                name=acc.get("product", "Unknown"),
-                currency=acc.get("currency", ""),
+        bank_name_resp = (response.get("aspsp") or {}).get("name", bank_name)
+        
+        accounts = []
+        for acc in raw_accounts:
+            iban = acc.get("iban") or (acc.get("account_id") or {}).get("iban", "")
+            acc_name = acc.get("product") or acc.get("name") or acc.get("details") or "Account"
+            full_name = f"{bank_name_resp} {acc_name}".strip()
+            currency = acc.get("currency", "")
+            
+            accounts.append(
+                Account(
+                    id=acc["uid"],
+                    iban=str(iban),
+                    name=str(full_name),
+                    currency=currency,
+                )
             )
-            for acc in raw_accounts
-        ]
+            
+        return session, accounts
 
     def fetch_transactions(self, session_id: str, account_id: str) -> list[Transaction]:
-        """Fetch transactions for a specific account under an authorized session."""
+        """Fetch all transactions for an account, following pagination via continuation_key."""
         endpoint = _TRANSACTIONS_ENDPOINT.format(account_id=account_id)
-        response = self.__client.get(f"{endpoint}?session_id={session_id}")
-        raw_txs: list[dict[str, Any]] = response.get("transactions", [])
-        return [
-            Transaction(
-                id=tx["uid"],
-                account_id=account_id,
-                date=datetime.date.fromisoformat(tx["booking_date"]),
-                amount=Decimal(str(tx["amount"])),
-                currency=tx["currency"],
-                description=_resolve_description(tx),
-                notes=tx.get("remittance_information_unstructured", ""),
-            )
-            for tx in raw_txs
-        ]
+        raw_txs: list[dict[str, Any]] = []
+        params: dict[str, str] = {"session_id": session_id}
+
+        while True:
+            query = "&".join(f"{k}={v}" for k, v in params.items())
+            response = self.__client.get(f"{endpoint}?{query}")
+            raw_txs.extend(response.get("transactions", []))
+            continuation_key = response.get("continuation_key")
+            if not continuation_key:
+                break
+            params = {"continuation_key": continuation_key}
+
+        return [_parse_transaction(tx, account_id) for tx in raw_txs]
+
+
+def _resolve_date(tx: dict[str, Any]) -> datetime.date:
+    """Return the best available date — transaction_date > booking_date > value_date."""
+    raw = tx.get("transaction_date") or tx.get("booking_date") or tx.get("value_date")
+    if not raw:
+        raise ValueError(f"Transaction has no parseable date: {tx.get('entry_reference', '?')}")
+    return datetime.date.fromisoformat(str(raw)[:10])
+
+
+def _resolve_amount(tx: dict[str, Any]) -> Decimal:
+    """Return a signed Decimal: negative for debits (DBIT), positive for credits."""
+    amount_obj = tx.get("transaction_amount") or {}
+    raw = amount_obj.get("amount") or tx.get("amount", "0")
+    amount = Decimal(str(raw))
+    indicator = (tx.get("credit_debit_indicator") or tx.get("credit_debit_indic", "")).upper()
+    if indicator == "DBIT":
+        return -abs(amount)
+    return abs(amount)
+
+
+def _resolve_description(tx: dict[str, Any]) -> str:
+    """Return the best available payee/description for a transaction."""
+    return (
+        tx.get("creditor_name")
+        or (tx.get("creditor") or {}).get("name")
+        or tx.get("debtor_name")
+        or (tx.get("debtor") or {}).get("name")
+        or tx.get("remittance_information_unstructured")
+        or "No description"
+    )
+
+
+def _resolve_notes(tx: dict[str, Any]) -> str:
+    """Return remittance information as a single string."""
+    unstructured = tx.get("remittance_information_unstructured")
+    if unstructured:
+        return str(unstructured)
+    structured = tx.get("remittance_information")
+    if isinstance(structured, list):
+        return " ".join(structured)
+    return ""
+
+
+def _resolve_currency(tx: dict[str, Any]) -> str:
+    amount_obj = tx.get("transaction_amount") or {}
+    return str(amount_obj.get("currency") or tx.get("currency", ""))
+
+
+def _resolve_id(tx: dict[str, Any]) -> str:
+    """Return the unique identifier for a transaction."""
+    tx_id = tx.get("entry_reference") or tx.get("transaction_id")
+    if not tx_id:
+        import uuid
+        return str(uuid.uuid4())
+    return str(tx_id)
+
+
+def _parse_transaction(tx: dict[str, Any], account_id: str) -> Transaction:
+    return Transaction(
+        id=_resolve_id(tx),
+        account_id=account_id,
+        date=_resolve_date(tx),
+        amount=_resolve_amount(tx),
+        currency=_resolve_currency(tx),
+        description=_resolve_description(tx),
+        notes=_resolve_notes(tx),
+    )

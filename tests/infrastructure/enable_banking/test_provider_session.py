@@ -32,13 +32,13 @@ def test_fetch_accounts_maps_response_to_domain() -> None:
     provider = _make_provider()
     mock_client = provider._EnableBankingProvider__client  # type: ignore[attr-defined]
     mock_client.get.return_value = {
-        "accounts": [
+        "accounts_data": [
             {
                 "uid": "acc-1",
-                "iban": "ES91 2100 0418 4502 0005 1332",
-                "product": "Cuenta",
+                "iban": "ES00000000001",
+                "product": "Checking Account",
                 "currency": "EUR",
-            },
+            }
         ]
     }
 
@@ -47,7 +47,7 @@ def test_fetch_accounts_maps_response_to_domain() -> None:
     assert len(accounts) == 1
     assert accounts[0].id == "acc-1"
     assert accounts[0].currency == "EUR"
-    mock_client.get.assert_called_once_with("/accounts?session_id=sess-xyz789")
+    mock_client.get.assert_called_once_with("/sessions/sess-xyz789")
 
 
 def test_fetch_transactions_maps_response_to_domain() -> None:

@@ -60,6 +60,22 @@ sync:  ## Sync bank accounts from provider to local DB
 sync-transactions:  ## Sync transactions for all local accounts
 	uv run flowger sync-transactions
 
+.PHONY: accounts
+accounts:  ## List all synced accounts and their IDs
+	uv run flowger accounts
+
+.PHONY: db
+db:  ## Open an interactive SQLite shell on flowger.db
+	sqlite3 flowger.db
+
+.PHONY: db-accounts
+db-accounts:  ## Print accounts table directly from SQLite
+	sqlite3 -column -header flowger.db "SELECT id, iban, name, currency FROM accounts;"
+
+.PHONY: db-transactions
+db-transactions:  ## Print last 20 transactions directly from SQLite
+	sqlite3 -column -header flowger.db "SELECT account_id, date, description, amount, currency FROM transactions ORDER BY date DESC LIMIT 20;"
+
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
 .PHONY: clean-db

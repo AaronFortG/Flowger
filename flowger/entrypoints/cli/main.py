@@ -3,7 +3,6 @@
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
-from flowger.application.sync_accounts import SyncAccountsUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.infrastructure.config import Settings, get_settings
 from flowger.infrastructure.enable_banking.provider import EnableBankingProvider
@@ -83,47 +82,33 @@ def authorize(
     provider = _create_bank_provider(settings)
     session_repo = SqliteSessionRepository(settings.database_path)
 
+    account_repo = SqliteAccountRepository(settings.database_path)
+
     typer.echo(f"Authorizing session for {bank} ({country})...")
-    session = provider.authorize_session(code=code, bank_name=bank, country=country)
+    session, accounts = provider.authorize_session(code=code, bank_name=bank, country=country)
+    
     session_repo.save_session(session)
+    account_repo.save_accounts(accounts)
 
     typer.secho(
-        f"Session authorized and saved. Session ID: {session.session_id}",
+        f"Session authorized and {len(accounts)} accounts saved. Session ID: {session.session_id}",
         fg=typer.colors.GREEN,
     )
 
-
 @app.command()
-def sync(
-    bank: str = typer.Option(None, help="Bank name to sync"),
-    country: str = typer.Option(None, help="Country code"),
-) -> None:
-    """Fetch accounts from the bank and persist them locally."""
+def accounts() -> None:
+    """List all accounts stored in the local database."""
     settings = get_settings()
     init_db(settings.database_path)
-
-    bank = bank or settings.default_bank
-    country = country or settings.default_country
-
-    session_repo = SqliteSessionRepository(settings.database_path)
-    session = session_repo.get_latest_session(bank_name=bank, country=country)
-
-    if session is None:
-        typer.secho(
-            f"No session found for {bank} ({country}). Run `flowger login` first.",
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-
-    provider = _create_bank_provider(settings)
     account_repo = SqliteAccountRepository(settings.database_path)
-
-    typer.echo(f"Fetching accounts for {bank} ({country})...")
-    use_case = SyncAccountsUseCase(provider=provider, repository=account_repo)
-    use_case.execute(session_id=session.session_id)
-
-    typer.secho("Account sync complete.", fg=typer.colors.GREEN)
-
+    stored = account_repo.get_accounts()
+    if not stored:
+        typer.echo("No accounts found. Run `flowger authorize` first.")
+        raise typer.Exit(0)
+    typer.echo(f"{'ID':<40} {'IBAN':<26} {'Name':<20} Currency")
+    typer.echo("-" * 96)
+    for acc in stored:
+        typer.echo(f"{acc.id:<40} {acc.iban:<26} {acc.name:<20} {acc.currency}")
 
 @app.command()
 def sync_transactions(

@@ -51,12 +51,12 @@ ENABLEBANKING_APP_ID=your_app_id
 ENABLEBANKING_ENVIRONMENT=SANDBOX       # or PRODUCTION
 ENABLEBANKING_KEY_PATH=/path/to/private.key
 
-# Optional — these have defaults
-DATABASE_PATH=flowger.db
-DEFAULT_BANK=Imagin
-DEFAULT_COUNTRY=ES
-DEFAULT_REDIRECT_URL=http://localhost:8000/callback
-DEFAULT_EXPORT_FILE=transactions.csv
+# Optional (commented = default value applies)
+# DATABASE_PATH=flowger.db
+# DEFAULT_BANK=Imagin
+# DEFAULT_COUNTRY=ES
+# DEFAULT_REDIRECT_URL=https://enablebanking.com/ais/
+# DEFAULT_EXPORT_FILE=transactions.csv
 ```
 
 ### 4. Verify configuration
@@ -97,7 +97,7 @@ After authenticating, run:
   flowger authorize --code <CODE> --bank <BANK> --country <COUNTRY>
 ```
 
-Open the printed URL in your browser and complete the bank login. You will be redirected to `http://localhost:8000/callback?code=<CODE>&...`. Copy the `code` value from the URL.
+Open the printed URL in your browser and complete the bank login. You will be redirected to `https://enablebanking.com/ais/?code=<CODE>&state=...`. Copy the `code` value from the browser address bar.
 
 ### Step 2 — Exchange the code for a session
 

@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     default_bank: str = Field("Imagin", description="Default bank name for CLI commands")
     default_country: str = Field("ES", description="Default country code for CLI commands")
     default_redirect_url: str = Field(
-        "http://localhost:8000/callback",
-        description="Default OAuth redirect URL",
+        "https://enablebanking.com/ais/",
+        description="OAuth redirect URL — must be registered in the Enable Banking application",
     )
     default_export_file: str = Field(
         "transactions.csv",

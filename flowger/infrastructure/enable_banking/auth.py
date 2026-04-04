@@ -1,4 +1,5 @@
 import time
+import uuid
 
 import jwt
 
@@ -31,8 +32,10 @@ def generate_bearer_token(
     payload = {
         "iss": _ISSUER,
         "aud": _AUDIENCE,
+        "sub": app_id,
         "iat": now,
         "exp": now + expiration_seconds,
+        "jti": str(uuid.uuid4()),
     }
 
     return jwt.encode(

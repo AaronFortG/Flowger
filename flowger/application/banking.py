@@ -2,13 +2,14 @@ from typing import Protocol
 
 from flowger.domain.account import Account
 from flowger.domain.transaction import Transaction
+from flowger.domain.bank_session import BankSession
 
 
 class BankProvider(Protocol):
     """Port for fetching data from an external banking provider."""
 
-    def fetch_accounts(self, session_id: str) -> list[Account]:
-        """Fetch all accounts available for the given authorized session."""
+    def authorize_session(self, code: str, bank_name: str, country: str) -> tuple[BankSession, list[Account]]:
+        """Exchange redirect code for session and full list of available accounts."""
         pass
 
     def fetch_transactions(self, session_id: str, account_id: str) -> list[Transaction]:
