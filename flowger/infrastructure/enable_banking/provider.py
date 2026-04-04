@@ -32,6 +32,12 @@ class EnableBankingProvider:
             environment=environment,
         )
 
+    def __enter__(self) -> "EnableBankingProvider":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.__client.close()
+
     def start_authorization(
         self, bank_name: str, country: str, redirect_url: str, psu_type: str = ""
     ) -> str:

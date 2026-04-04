@@ -16,17 +16,16 @@ def login(
     bank = bank or settings.default_bank
     country = country or settings.default_country
 
-    provider = create_bank_provider(settings)
-
-    typer.echo(f"Requesting authorization for {bank} ({country})...")
-    url = provider.start_authorization(
-        bank_name=bank,
-        country=country,
-        redirect_url=settings.default_redirect_url,
-    )
-    typer.echo("\nOpen the following URL in your browser to authenticate:")
-    typer.echo(f"\n{url}\n")
-    typer.echo(
-        "After authenticating, run:\n"
-        "  flowger authorize --code <CODE> --bank <BANK> --country <COUNTRY>"
-    )
+    with create_bank_provider(settings) as provider:
+        typer.echo(f"Requesting authorization for {bank} ({country})...")
+        url = provider.start_authorization(
+            bank_name=bank,
+            country=country,
+            redirect_url=settings.default_redirect_url,
+        )
+        typer.echo("\nOpen the following URL in your browser to authenticate:")
+        typer.echo(f"\n{url}\n")
+        typer.echo(
+            "After authenticating, run:\n"
+            "  flowger authorize --code <CODE> --bank <BANK> --country <COUNTRY>"
+        )

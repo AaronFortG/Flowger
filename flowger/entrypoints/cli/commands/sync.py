@@ -32,17 +32,17 @@ def sync(
         )
         raise typer.Exit(1)
 
-    provider = create_bank_provider(settings)
     account_repo = SqliteAccountRepository(settings.database_path)
     transaction_repo = SqliteTransactionRepository(settings.database_path)
 
-    use_case = SyncTransactionsUseCase(
-        provider=provider,
-        account_repository=account_repo,
-        transaction_repository=transaction_repo,
-    )
+    with create_bank_provider(settings) as provider:
+        use_case = SyncTransactionsUseCase(
+            provider=provider,
+            account_repository=account_repo,
+            transaction_repository=transaction_repo,
+        )
 
-    typer.echo(f"Syncing transactions for all accounts in {bank} ({country})...")
-    use_case.execute(session_id=session.session_id)
+        typer.echo(f"Syncing transactions for all accounts in {bank} ({country})...")
+        use_case.execute(session_id=session.session_id)
 
     typer.secho("Transaction sync complete.", fg=typer.colors.GREEN)

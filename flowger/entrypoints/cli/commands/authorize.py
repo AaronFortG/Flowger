@@ -21,17 +21,17 @@ def authorize(
     bank = bank or settings.default_bank
     country = country or settings.default_country
 
-    provider = create_bank_provider(settings)
     session_repo = SqliteSessionRepository(settings.database_path)
     account_repo = SqliteAccountRepository(settings.database_path)
 
-    typer.echo(f"Authorizing session for {bank} ({country})...")
-    session, accounts = provider.authorize_session(code=code, bank_name=bank, country=country)
+    with create_bank_provider(settings) as provider:
+        typer.echo(f"Authorizing session for {bank} ({country})...")
+        session, accounts = provider.authorize_session(code=code, bank_name=bank, country=country)
 
-    session_repo.save_session(session)
-    account_repo.save_accounts(accounts)
+        session_repo.save_session(session)
+        account_repo.save_accounts(accounts)
 
-    typer.secho(
-        f"Session authorized and {len(accounts)} accounts saved. Session ID: {session.session_id}",
-        fg=typer.colors.GREEN,
-    )
+        typer.secho(
+            f"Session authorized and {len(accounts)} accounts saved. Session ID: {session.session_id}",
+            fg=typer.colors.GREEN,
+        )
