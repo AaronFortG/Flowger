@@ -11,7 +11,7 @@ def test_settings_validation_fails_without_required_env(monkeypatch):
     monkeypatch.delenv("ENABLEBANKING_KEY_PATH", raising=False)
 
     with pytest.raises(ValidationError) as exc_info:
-        Settings()
+        Settings(_env_file=None)
 
     assert "enablebanking_app_id" in str(exc_info.value)
     assert "enablebanking_environment" in str(exc_info.value)
@@ -24,7 +24,7 @@ def test_settings_loads_valid_env(monkeypatch):
     monkeypatch.setenv("ENABLEBANKING_ENVIRONMENT", "SANDBOX")
     monkeypatch.setenv("ENABLEBANKING_KEY_PATH", "/tmp/mock.key")
 
-    settings = Settings()
+    settings = Settings(_env_file=None)
     
     assert settings.enablebanking_app_id == "test-app-id"
     assert settings.enablebanking_environment == "SANDBOX"
