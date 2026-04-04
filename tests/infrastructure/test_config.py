@@ -1,9 +1,10 @@
 import pytest
 from pydantic import ValidationError
-from flowger.infrastructure.config import Settings, get_settings
+
+from flowger.infrastructure.config import Settings
 
 
-def test_settings_validation_fails_without_required_env(monkeypatch):
+def test_settings_validation_fails_without_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure validation fails when environment variables are missing."""
     # Ensure no environment variables are accidentally satisfying the model
     monkeypatch.delenv("ENABLEBANKING_APP_ID", raising=False)
@@ -11,21 +12,21 @@ def test_settings_validation_fails_without_required_env(monkeypatch):
     monkeypatch.delenv("ENABLEBANKING_KEY_PATH", raising=False)
 
     with pytest.raises(ValidationError) as exc_info:
-        Settings(_env_file=None)
+        Settings(_env_file=None)  # type: ignore[call-arg]
 
     assert "enablebanking_app_id" in str(exc_info.value)
     assert "enablebanking_environment" in str(exc_info.value)
     assert "enablebanking_key_path" in str(exc_info.value)
 
 
-def test_settings_loads_valid_env(monkeypatch):
+def test_settings_loads_valid_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure settings load successfully with valid configuration."""
     monkeypatch.setenv("ENABLEBANKING_APP_ID", "test-app-id")
     monkeypatch.setenv("ENABLEBANKING_ENVIRONMENT", "SANDBOX")
     monkeypatch.setenv("ENABLEBANKING_KEY_PATH", "/tmp/mock.key")
 
-    settings = Settings(_env_file=None)
-    
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+
     assert settings.enablebanking_app_id == "test-app-id"
     assert settings.enablebanking_environment == "SANDBOX"
     assert settings.enablebanking_key_path == "/tmp/mock.key"

@@ -1,13 +1,14 @@
 """Flowger Typer CLI entrypoint."""
 
 import typer
+
 from flowger.infrastructure.config import get_settings
 
 app = typer.Typer(help="Flowger - Bank transaction synchronization utility.")
 
 
 @app.command()
-def config():
+def config() -> None:
     """Verify application configuration is valid."""
     try:
         settings = get_settings()
