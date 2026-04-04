@@ -23,7 +23,7 @@ def test_sync_transactions_use_case() -> None:
         date=date(2026, 4, 4),
         amount=Decimal("100.00"),
         currency="EUR",
-        description="Test TX",
+        payee="Test TX",
     )
     provider.fetch_transactions.return_value = [transaction]
 

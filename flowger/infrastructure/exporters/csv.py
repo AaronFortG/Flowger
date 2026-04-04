@@ -26,7 +26,7 @@ class ActualCsvExporter(ExportService):
                 writer.writerow(
                     [
                         tx.date.isoformat(),
-                        tx.description,
+                        tx.payee,
                         tx.notes,
                         str(tx.amount),
                     ]

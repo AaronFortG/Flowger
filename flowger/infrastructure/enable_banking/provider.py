@@ -4,6 +4,7 @@ from typing import Any
 
 from flowger.domain.account import Account
 from flowger.domain.bank_session import BankSession
+from flowger.domain.payment_type import PaymentType
 from flowger.domain.transaction import Transaction
 from flowger.infrastructure.enable_banking.client import EnableBankingClient
 
@@ -117,32 +118,40 @@ class EnableBankingProvider:
 
 def _resolve_date(tx: dict[str, Any]) -> datetime.date:
     """Return the best available date — transaction_date > booking_date > value_date."""
-    raw = tx.get("transaction_date") or tx.get("booking_date") or tx.get("value_date")
+    raw = tx.get("booking_date") or tx.get("value_date")
     if not raw:
         raise ValueError(f"Transaction has no parseable date: {tx.get('entry_reference', '?')}")
     return datetime.date.fromisoformat(str(raw)[:10])
 
 
 def _resolve_amount(tx: dict[str, Any]) -> Decimal:
-    """Return a signed Decimal: negative for debits (DBIT), positive for credits."""
+    """Return the signed amount based on the credit/debit indicator."""
+    indicator = tx.get("credit_debit_indicator").upper()
+    
     amount_obj = tx.get("transaction_amount") or {}
-    raw = amount_obj.get("amount") or tx.get("amount", "0")
-    amount = Decimal(str(raw))
-    indicator = (tx.get("credit_debit_indicator") or tx.get("credit_debit_indic", "")).upper()
-    if indicator == "DBIT":
+    raw_amount = amount_obj.get("amount", "0")
+    amount = Decimal(str(raw_amount))
+    
+    if indicator == PaymentType.DEBIT:
         return -abs(amount)
     return abs(amount)
 
 
-def _resolve_description(tx: dict[str, Any]) -> str:
-    """Return the best available payee/description for a transaction."""
+def _resolve_payee(tx: dict[str, Any]) -> str:
+    """Return the best available payee for a transaction."""
+    indicator = tx.get("credit_debit_indicator").upper()
+    if indicator == PaymentType.DEBIT:
+        # It's an expense, so the payee is the creditor
+        return (
+            (tx.get("creditor") or {}).get("name")
+            or tx.get("remittance_information_unstructured")
+            or "Unknown Payee"
+        )
+    # It's income, so the payee is the debtor
     return (
-        tx.get("creditor_name")
-        or (tx.get("creditor") or {}).get("name")
-        or tx.get("debtor_name")
-        or (tx.get("debtor") or {}).get("name")
+        (tx.get("debtor") or {}).get("name")
         or tx.get("remittance_information_unstructured")
-        or "No description"
+        or "Unknown Payee"
     )
 
 
@@ -159,12 +168,12 @@ def _resolve_notes(tx: dict[str, Any]) -> str:
 
 def _resolve_currency(tx: dict[str, Any]) -> str:
     amount_obj = tx.get("transaction_amount") or {}
-    return str(amount_obj.get("currency") or tx.get("currency", ""))
+    return str(amount_obj.get("currency", "0"))
 
 
 def _resolve_id(tx: dict[str, Any]) -> str:
     """Return the unique identifier for a transaction."""
-    tx_id = tx.get("entry_reference") or tx.get("transaction_id")
+    tx_id = tx.get("entry_reference")
     if not tx_id:
         import uuid
         return str(uuid.uuid4())
@@ -178,6 +187,6 @@ def _parse_transaction(tx: dict[str, Any], account_id: str) -> Transaction:
         date=_resolve_date(tx),
         amount=_resolve_amount(tx),
         currency=_resolve_currency(tx),
-        description=_resolve_description(tx),
+        payee=_resolve_payee(tx),
         notes=_resolve_notes(tx),
     )

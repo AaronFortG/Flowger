@@ -13,7 +13,7 @@ def _make_transaction(tx_id: str = "tx1", account_id: str = "acc1") -> Transacti
         date=date(2026, 4, 1),
         amount=Decimal("-50.00"),
         currency="EUR",
-        description="Test",
+        payee="Test",
     )
 
 

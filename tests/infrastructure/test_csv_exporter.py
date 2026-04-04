@@ -16,7 +16,7 @@ def test_actual_csv_exporter_writes_correct_format(tmp_path: Path) -> None:
             date=date(2026, 4, 1),
             amount=Decimal("-50.00"),
             currency="EUR",
-            description="Grocery Store",
+            payee="Grocery Store",
         ),
         Transaction(
             id="tx2",
@@ -24,7 +24,7 @@ def test_actual_csv_exporter_writes_correct_format(tmp_path: Path) -> None:
             date=date(2026, 3, 31),
             amount=Decimal("1000.00"),
             currency="EUR",
-            description="Salary",
+            payee="Salary",
         ),
     ]
     exporter = ActualCsvExporter()

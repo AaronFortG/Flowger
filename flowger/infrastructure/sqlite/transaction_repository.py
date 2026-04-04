@@ -5,18 +5,19 @@ from flowger.domain.transaction import Transaction
 
 _QUERY_SAVE = """
     INSERT INTO transactions
-    (id, account_id, date, amount, currency, description, notes)
+    (id, account_id, date, amount, currency, payee, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
+        account_id=excluded.account_id,
         date=excluded.date,
         amount=excluded.amount,
         currency=excluded.currency,
-        description=excluded.description,
+        payee=excluded.payee,
         notes=excluded.notes;
 """
 
 _QUERY_GET_FOR_ACCOUNT = """
-    SELECT id, account_id, date, amount, currency, description, notes
+    SELECT id, account_id, date, amount, currency, payee, notes
     FROM transactions
     WHERE account_id = ?
     ORDER BY date DESC;
@@ -30,7 +31,7 @@ class SqliteTransactionRepository:
         self.__db_path = db_path
 
     def save_transactions(self, transactions: list[Transaction]) -> None:
-        """Upsert transactions — inserts new ones and updates all mutable fields for existing IDs."""
+        """Upsert transactions — inserts new ones and updates existing ones completely."""
         rows = [
             (
                 tx.id,
@@ -38,7 +39,7 @@ class SqliteTransactionRepository:
                 tx.date.isoformat(),
                 str(tx.amount),
                 tx.currency,
-                tx.description,
+                tx.payee,
                 tx.notes,
             )
             for tx in transactions
