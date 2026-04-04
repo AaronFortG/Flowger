@@ -148,9 +148,18 @@ Transactions are fetched for every synced account and stored in SQLite. Running 
 
 ```bash
 uv run flowger export --account-id <ACCOUNT_UID>
-# or with a custom output path:
-uv run flowger export --account-id <ACCOUNT_UID> --output myaccount.csv
+# or with a custom output path and separator options:
+uv run flowger export --account-id <ACCOUNT_UID> --output myaccount.csv --delimiter ";" --no-safe
 ```
+
+Available CLI Flags:
+* `--account-id`: The UID of the account
+* `--output`: Path to the CSV (defaults to `transactions.csv`)
+* `--delimiter`: Changes the CSV column separator (defaults to `,`)
+* `--safe` / `--no-safe`: Toggles string sterilization (defaults to `--safe`). 
+  
+**About `safe` mode and Quotes:**
+Actual Budget requires precise CSV imports and often crashes when double-quotes are encountered. By default, `csv.writer` automatically wraps fields in double-quotes (`""`) whenever a field string visually contains the current `--delimiter`. To protect brittle importers, Flowger natively defaults to `--safe`, which actively strips and forcefully sanitizes strings (e.g. converting nested commas into spaces if `,` is the delimiter) prior to CSV writing to ensure quotes are never generated. Pass `--no-safe` if you want raw, unadulterated quotes emitted dynamically.
 
 Expected output:
 ```
@@ -159,7 +168,6 @@ Export complete. File saved to transactions.csv.
 ```
 
 The CSV is formatted for direct import into **Actual Budget** (`Date, Payee, Notes, Amount`).
-
 ---
 
 ## Development

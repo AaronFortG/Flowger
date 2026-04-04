@@ -52,3 +52,54 @@ def test_actual_csv_exporter_writes_header_only_for_empty_list(tmp_path: Path) -
     lines = content.splitlines()
     assert len(lines) == 1
     assert lines[0] == "Date,Payee,Notes,Amount"
+
+
+def test_actual_csv_exporter_custom_delimiter(tmp_path: Path) -> None:
+    output_file = tmp_path / "semicolon.csv"
+    transactions = [
+        Transaction(
+            id="tx1",
+            account_id="acc1",
+            date=date(2026, 4, 1),
+            amount=Decimal("-50.00"),
+            currency="EUR",
+            payee="Grocery",
+        ),
+    ]
+    exporter = ActualCsvExporter(delimiter=";")
+    exporter.write_transactions(transactions, str(output_file))
+
+    content = output_file.read_text(encoding="utf-8")
+    lines = content.splitlines()
+    assert lines[0] == "Date;Payee;Notes;Amount"
+    assert lines[1] == "2026-04-01;Grocery;;-50.00"
+
+
+def test_actual_csv_exporter_safe_mode(tmp_path: Path) -> None:
+    output_file = tmp_path / "safe.csv"
+    transactions = [
+        Transaction(
+            id="tx1",
+            account_id="acc1",
+            date=date(2026, 4, 1),
+            amount=Decimal("-50.00"),
+            currency="EUR",
+            payee='Store, "The" Store',
+            notes="Note with 'quotes'",
+        ),
+    ]
+    
+    # Test safe mode (default)
+    exporter_safe = ActualCsvExporter(safe=True)
+    exporter_safe.write_transactions(transactions, str(output_file))
+    lines_safe = output_file.read_text(encoding="utf-8").splitlines()
+    # Quotes stripped, commas turned to spaces
+    assert lines_safe[1] == "2026-04-01,Store  The Store,Note with quotes,-50.00"
+
+    # Test unsafe mode
+    output_unsafe = tmp_path / "unsafe.csv"
+    exporter_unsafe = ActualCsvExporter(safe=False)
+    exporter_unsafe.write_transactions(transactions, str(output_unsafe))
+    lines_unsafe = output_unsafe.read_text(encoding="utf-8").splitlines()
+    # CSV writer protects the comma by wrapping the field in double quotes
+    assert lines_unsafe[1] == '2026-04-01,"Store, ""The"" Store",Note with \'quotes\',-50.00'
