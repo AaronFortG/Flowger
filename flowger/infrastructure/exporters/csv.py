@@ -23,11 +23,14 @@ class ActualCsvExporter(ExportService):
             writer.writerow(self._HEADERS)
 
             for tx in sorted_txs:
+                safe_payee = tx.payee.replace('"', "").replace("'", "").replace(",", " ")
+                safe_notes = tx.notes.replace('"', "").replace("'", "").replace(",", " ")
+                
                 writer.writerow(
                     [
                         tx.date.isoformat(),
-                        tx.payee,
-                        tx.notes,
+                        safe_payee,
+                        safe_notes,
                         str(tx.amount),
                     ]
                 )
