@@ -12,7 +12,6 @@ class EnableBankingClient:
     BASE_URL = "https://api.enablebanking.com"
 
     def __init__(self, app_id: str, private_key_path: str, environment: str = "SANDBOX") -> None:
-        self.__environment = environment
         # Token is generated once per client lifetime — avoid re-reading key on every request.
         self.__token = generate_bearer_token(
             app_id=app_id,
@@ -40,11 +39,11 @@ class EnableBankingClient:
                 f"POST {endpoint} failed with status {e.response.status_code}: {e.response.text}"
             ) from e
 
-    def get(self, endpoint: str) -> dict[str, Any]:
+    def get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Perform a GET request and return the parsed JSON body."""
         url = f"{self.BASE_URL}{endpoint}"
         try:
-            response = self.__http.get(url, headers=self.__get_headers())
+            response = self.__http.get(url, params=params, headers=self.__get_headers())
             response.raise_for_status()
             data: dict[str, Any] = response.json()
             return data

@@ -36,6 +36,7 @@ def test_client_get_success(mock_httpx_client: MagicMock, mock_jwt: MagicMock) -
     assert result == {"a": "b"}
     mock_httpx_client.get.assert_called_once_with(
         "https://api.enablebanking.com/test",
+        params=None,
         headers={"Authorization": "Bearer fake.jwt.token", "Content-Type": "application/json"},
     )
     mock_response.raise_for_status.assert_called_once()

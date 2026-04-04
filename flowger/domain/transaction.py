@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel
@@ -14,3 +14,4 @@ class Transaction(BaseModel):
     currency: str
     payee: str
     notes: str = ""
+    exported_at: datetime | None = None

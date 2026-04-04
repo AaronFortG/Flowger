@@ -10,7 +10,10 @@ def export(
     account_id: str = typer.Option(..., help="The UID of the account to export"),
     output: str = typer.Option(None, help="Path to the output CSV file"),
     delimiter: str = typer.Option(",", help="CSV value separator"),
-    safe: bool = typer.Option(True, help="Strip quotes and commas from string fields"),
+    safe: bool = typer.Option(True, help="Sanitize fields (strip quotes and active delimiter)"),
+    new_only: bool = typer.Option(
+        False, "--new-only", help="Export only unexported transactions and mark them as exported"
+    ),
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
@@ -27,6 +30,10 @@ def export(
     )
 
     typer.echo(f"Exporting transactions for account {account_id} to {output}...")
-    use_case.execute(account_id=account_id, output_path=output)
+    use_case.execute(
+        account_id=account_id,
+        output_path=output,
+        new_only=new_only,
+    )
 
     typer.secho(f"Export complete. File saved to {output}.", fg=typer.colors.GREEN)

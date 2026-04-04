@@ -107,7 +107,9 @@ def test_fetch_transactions_maps_response_to_domain() -> None:
     assert str(tx.amount) == "-100.50"
     assert tx.payee == "Supermarket"
     assert tx.notes == "Weekly shop"
-    mock_client.get.assert_called_once_with("/accounts/acc-1/transactions?session_id=sess-xyz789")
+    mock_client.get.assert_called_once_with(
+        "/accounts/acc-1/transactions", params={"session_id": "sess-xyz789"}
+    )
 
 
 def test_fetch_transactions_payee_fallback() -> None:

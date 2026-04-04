@@ -14,13 +14,6 @@ dependencies = [
     "cryptography>=46.0.6",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0.0",
-]
-
 [project.scripts]
 flowger = "flowger.entrypoints.cli.main:app"
 
@@ -50,5 +43,7 @@ ignore_missing_imports = true
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
     "types-pyjwt>=1.7.1",
 ]

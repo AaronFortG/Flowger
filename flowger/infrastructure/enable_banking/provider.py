@@ -11,7 +11,6 @@ from flowger.infrastructure.enable_banking.client import EnableBankingClient
 
 _AUTH_ENDPOINT = "/auth"
 _SESSIONS_ENDPOINT = "/sessions"
-_ACCOUNTS_ENDPOINT = "/accounts"
 _TRANSACTIONS_ENDPOINT = "/accounts/{account_id}/transactions"
 _AUTH_STATE = "flowger_sync"
 _ACCESS_VALID_DAYS = 180
@@ -102,13 +101,12 @@ class EnableBankingProvider:
         params: dict[str, str] = {"session_id": session_id}
 
         while True:
-            query = "&".join(f"{k}={v}" for k, v in params.items())
-            response = self.__client.get(f"{endpoint}?{query}")
+            response = self.__client.get(endpoint, params=params)
             raw_txs.extend(response.get("transactions", []))
             continuation_key = response.get("continuation_key")
             if not continuation_key:
                 break
-            params = {"continuation_key": continuation_key}
+            params = {"continuation_key": continuation_key, "session_id": session_id}
 
         return [_parse_transaction(tx, account_id) for tx in raw_txs]
 
@@ -141,7 +139,7 @@ def _resolve_id(tx: dict[str, Any]) -> str:
 
 def _resolve_date(tx: dict[str, Any]) -> datetime.date:
     """Return the best available date — transaction_date > booking_date > value_date."""
-    raw = tx.get("booking_date") or tx.get("value_date")
+    raw = tx.get("transaction_date") or tx.get("booking_date") or tx.get("value_date")
     if not raw:
         raise ValueError(f"Transaction has no parseable date: {tx.get('entry_reference', '?')}")
     return datetime.date.fromisoformat(str(raw)[:10])
@@ -162,7 +160,7 @@ def _resolve_amount(tx: dict[str, Any]) -> Decimal:
 
 def _resolve_currency(tx: dict[str, Any]) -> str:
     amount_obj = tx.get("transaction_amount") or {}
-    return str(amount_obj.get("currency", "0"))
+    return str(amount_obj.get("currency", ""))
 
 
 def _resolve_payee(tx: dict[str, Any]) -> str:
@@ -171,7 +169,10 @@ def _resolve_payee(tx: dict[str, Any]) -> str:
     
     # Try to extract a structured remittance string if available
     remittance = tx.get("remittance_information")
-    remittance_str = " ".join(remittance) if isinstance(remittance, list) else str(remittance) if remittance else ""
+    if isinstance(remittance, list):
+        remittance_str = " ".join(remittance)
+    else:
+        remittance_str = str(remittance) if remittance else ""
 
     if indicator == PaymentType.DEBIT:
         # It's an expense, so the payee is the creditor

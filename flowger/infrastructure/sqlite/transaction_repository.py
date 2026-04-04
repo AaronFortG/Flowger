@@ -1,25 +1,34 @@
 import sqlite3
 from decimal import Decimal
+from typing import Any
 
 from flowger.domain.transaction import Transaction
 
 _QUERY_SAVE = """
     INSERT INTO transactions
-    (id, account_id, date, amount, currency, payee, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    (id, account_id, date, amount, currency, payee, notes, exported_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
         account_id=excluded.account_id,
         date=excluded.date,
         amount=excluded.amount,
         currency=excluded.currency,
         payee=excluded.payee,
-        notes=excluded.notes;
+        notes=excluded.notes,
+        exported_at=excluded.exported_at;
 """
 
 _QUERY_GET_FOR_ACCOUNT = """
-    SELECT id, account_id, date, amount, currency, payee, notes
+    SELECT id, account_id, date, amount, currency, payee, notes, exported_at
     FROM transactions
     WHERE account_id = ?
+    ORDER BY date DESC;
+"""
+
+_QUERY_GET_UNEXPORTED = """
+    SELECT id, account_id, date, amount, currency, payee, notes, exported_at
+    FROM transactions
+    WHERE account_id = ? AND exported_at IS NULL
     ORDER BY date DESC;
 """
 
@@ -41,6 +50,7 @@ class SqliteTransactionRepository:
                 tx.currency,
                 tx.payee,
                 tx.notes,
+                tx.exported_at.isoformat() if tx.exported_at else None,
             )
             for tx in transactions
         ]
@@ -51,7 +61,16 @@ class SqliteTransactionRepository:
         """Return all stored transactions for a given account, newest first."""
         with sqlite3.connect(self.__db_path) as conn:
             rows = conn.execute(_QUERY_GET_FOR_ACCOUNT, (account_id,)).fetchall()
+        return self.__map_rows(rows)
 
+    def get_unexported_transactions(self, account_id: str) -> list[Transaction]:
+        """Return all transactions for an account that have never been exported."""
+        with sqlite3.connect(self.__db_path) as conn:
+            rows = conn.execute(_QUERY_GET_UNEXPORTED, (account_id,)).fetchall()
+        return self.__map_rows(rows)
+
+    def __map_rows(self, rows: list[Any]) -> list[Transaction]:
+        from datetime import datetime
         return [
             Transaction(
                 id=row[0],
@@ -61,6 +80,7 @@ class SqliteTransactionRepository:
                 currency=row[4],
                 payee=row[5],
                 notes=row[6],
+                exported_at=datetime.fromisoformat(row[7]) if row[7] else None,
             )
             for row in rows
         ]

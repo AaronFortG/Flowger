@@ -53,12 +53,8 @@ login:  ## Start the bank authorization flow (generates URL to open in browser)
 	uv run flowger login
 
 .PHONY: sync
-sync:  ## Sync bank accounts from provider to local DB
+sync:  ## Sync transactions for all local accounts
 	uv run flowger sync
-
-.PHONY: sync-transactions
-sync-transactions:  ## Sync transactions for all local accounts
-	uv run flowger sync-transactions
 
 .PHONY: accounts
 accounts:  ## List all synced accounts and their IDs
@@ -74,7 +70,7 @@ db-accounts:  ## Print accounts table directly from SQLite
 
 .PHONY: db-transactions
 db-transactions:  ## Print last 20 transactions directly from SQLite
-	sqlite3 -column -header flowger.db "SELECT account_id, date, description, amount, currency FROM transactions ORDER BY date DESC LIMIT 20;"
+	sqlite3 -column -header flowger.db "SELECT account_id, date, payee, notes, amount, currency FROM transactions ORDER BY date DESC LIMIT 20;"
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
 

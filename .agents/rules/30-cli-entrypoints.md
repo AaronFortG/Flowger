@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: src/**/cli.py src/**/entrypoints/**
+globs: flowger/entrypoints/**
 ---
 
 # CLI Entrypoints

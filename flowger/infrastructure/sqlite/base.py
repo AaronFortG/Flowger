@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     amount      TEXT NOT NULL,
     currency    TEXT NOT NULL,
     payee       TEXT NOT NULL,
-    notes       TEXT NOT NULL
+    notes       TEXT NOT NULL,
+    exported_at TEXT
 );
 """
 
