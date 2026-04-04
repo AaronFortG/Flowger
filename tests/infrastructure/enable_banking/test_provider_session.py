@@ -53,9 +53,8 @@ def test_fetch_transactions_maps_response_to_domain() -> None:
             {
                 "entry_reference": "tx-1",
                 "booking_date": "2026-04-01",
-                "amount": "100.50",
+                "transaction_amount": {"amount": "100.50", "currency": "EUR"},
                 "credit_debit_indicator": "DBIT",
-                "currency": "EUR",
                 "creditor": {"name": "Supermarket"},
                 "remittance_information_unstructured": "Weekly shop",
             }
@@ -84,9 +83,8 @@ def test_fetch_transactions_payee_fallback() -> None:
             {
                 "entry_reference": "tx-2",
                 "booking_date": "2026-04-01",
-                "amount": "-30.00",
+                "transaction_amount": {"amount": "30.00", "currency": "EUR"},
                 "credit_debit_indicator": "DBIT",
-                "currency": "EUR",
                 "remittance_information_unstructured": "Invoice 42",
             }
         ]
@@ -106,8 +104,8 @@ def test_fetch_transactions_no_payee_fallback() -> None:
             {
                 "entry_reference": "tx-3",
                 "booking_date": "2026-04-01",
-                "amount": "5.00",
-                "currency": "EUR",
+                "transaction_amount": {"amount": "5.00", "currency": "EUR"},
+                "credit_debit_indicator": "CRDT",
             }
         ]
     }
