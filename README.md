@@ -110,24 +110,25 @@ uv run flowger authorize --code <CODE> --bank Imagin --country ES
 Expected output:
 ```
 Authorizing session for Imagin (ES)...
-Session authorized and saved. Session ID: sess-abc123...
+Session authorized and 1 accounts saved. Session ID: sess-abc123...
 ```
 
-The session is stored in the local SQLite database and reused for all subsequent commands.
+The session and associated accounts are stored in the local SQLite database and reused for all subsequent commands.
 
-### Step 3 — Sync accounts
+### Step 3 — List accounts
+
+You can view the accounts that were authorized and stored locally to find your Account ID (needed for exporting):
 
 ```bash
-uv run flowger sync
+uv run flowger accounts
 ```
 
 Expected output:
 ```
-Fetching accounts for Imagin (ES)...
-Account sync complete.
+ID                                       IBAN                       Name                 Currency
+------------------------------------------------------------------------------------------------
+acc-xyz                                  ES00000000001              Checking Account      EUR
 ```
-
-Your bank accounts are now stored locally.
 
 ### Step 4 — Sync transactions
 
