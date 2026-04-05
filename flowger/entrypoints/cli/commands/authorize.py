@@ -1,5 +1,6 @@
 import typer
 
+from flowger.application.authorize_session import AuthorizeSessionUseCase
 from flowger.entrypoints.cli.helpers import create_bank_provider
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
@@ -21,15 +22,14 @@ def authorize(
     bank = bank or settings.default_bank
     country = country or settings.default_country
 
-    session_repo = SqliteSessionRepository(settings.database_path)
-    account_repo = SqliteAccountRepository(settings.database_path)
-
     with create_bank_provider(settings) as provider:
         typer.echo(f"Authorizing session for {bank} ({country})...")
-        session, accounts = provider.authorize_session(code=code, bank_name=bank, country=country)
-
-        session_repo.save_session(session)
-        account_repo.save_accounts(accounts)
+        use_case = AuthorizeSessionUseCase(
+            provider=provider,
+            session_repository=SqliteSessionRepository(settings.database_path),
+            account_repository=SqliteAccountRepository(settings.database_path),
+        )
+        session, accounts = use_case.execute(code=code, bank_name=bank, country=country)
 
         typer.secho(
             f"Session authorized and {len(accounts)} accounts saved. "

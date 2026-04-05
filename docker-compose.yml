@@ -1,10 +1,14 @@
 # Flowger docker-compose — one service per bank.
 # All services share the same `db` volume so all transactions land in one database.
 #
-# Usage:
+# First-time setup (run once per bank):
+#   docker compose run --rm flowger-imagin setup --bank Imagin --country ES
+#
+# Start automated daemons:
 #   docker compose up -d
+#
+# View logs:
 #   docker compose logs -f flowger-imagin
-#   docker compose stop flowger-imagin
 
 services:
   flowger-imagin:
