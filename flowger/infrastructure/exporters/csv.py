@@ -52,7 +52,7 @@ class ActualCsvExporter(ExportService):
                 else:
                     payee_val = tx.payee
                     notes_val = tx.notes
-                
+
                 writer.writerow(
                     [
                         tx.date.isoformat(),

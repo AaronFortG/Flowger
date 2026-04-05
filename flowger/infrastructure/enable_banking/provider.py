@@ -165,7 +165,13 @@ def _resolve_amount(tx: dict[str, Any]) -> Decimal:
 
     if indicator == PaymentType.DEBIT.value:
         return -abs(amount)
-    return abs(amount)
+    if indicator == PaymentType.CREDIT.value:
+        return abs(amount)
+
+    raise ValueError(
+        f"Missing or unknown credit_debit_indicator: '{indicator}'. "
+        f"Expected {PaymentType.CREDIT.value} or {PaymentType.DEBIT.value}."
+    )
 
 
 def _resolve_currency(tx: dict[str, Any]) -> str:
