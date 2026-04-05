@@ -32,5 +32,4 @@ def test_create_transaction_invalid_data() -> None:
             id="txn_456",
             account_id="acc_123",
             currency="EUR",
-            description="Missing date and amount",
         )
