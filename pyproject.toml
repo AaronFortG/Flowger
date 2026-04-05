@@ -1,0 +1,50 @@
+[project]
+name = "flowger"
+version = "0.1.0"
+description = "Sync bank transactions locally and export to CSV"
+authors = [{name = "User"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.9.0",
+    "pydantic-settings>=2.0.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.28.1",
+    "pyjwt>=2.12.1",
+    "cryptography>=46.0.6",
+]
+
+[project.scripts]
+flowger = "flowger.entrypoints.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"] # pyflakes, pycodestyle, isort, pyupgrade
+ignore = []
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "jwt.*"
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "types-pyjwt>=1.7.1",
+]
