@@ -31,6 +31,6 @@ class SyncTransactionsUseCase:
                     session_id=session_id, account_id=account.id
                 )
                 self.__transaction_repository.save_transactions(transactions)
-            except BankProviderError as e:
+            except (BankProviderError, ValueError) as e:
                 logger.error("Failed to sync transactions for account %s: %s", account.id, e)
                 continue

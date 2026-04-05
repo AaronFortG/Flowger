@@ -8,6 +8,11 @@ def config() -> None:
     try:
         get_settings()
         typer.echo("Configuration is valid.")
-    except Exception as e:
-        typer.secho(f"Configuration error: {e!r}", fg=typer.colors.RED)
+    except Exception:
+        typer.secho(
+            "Configuration error: One or more required environment variables "
+            "are missing or invalid.",
+            fg=typer.colors.RED,
+        )
+        typer.echo("Run 'flowger config --help' or check your .env file.")
         raise typer.Exit(1)
