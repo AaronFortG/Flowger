@@ -1,6 +1,7 @@
 # Version control
 .git
 .gitignore
+.github
 
 # Python artifacts
 __pycache__
@@ -9,12 +10,24 @@ __pycache__
 .venv
 dist/
 build/
+.mypy_cache
+.pytest_cache
+.ruff_cache
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
 
 # Local dev & secrets
 .env
 *.pem
 *.key
+.db
 flowger.db
+transactions.csv
+/data
+/keys
+/exports
 
 # Tests and dev tooling
 tests/
