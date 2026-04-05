@@ -10,7 +10,6 @@ def _make_provider() -> EnableBankingProvider:
     return EnableBankingProvider(
         app_id="dummy",
         private_key_path="dummy",
-        environment="SANDBOX",
         client=mock_client,
     )
 

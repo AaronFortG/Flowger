@@ -1,9 +1,3 @@
-
----
-
-## `.agents/skills/iterative-implementation/SKILL.md`
-
-```md
 ---
 name: iterative-implementation
 description: Guides incremental implementation in small, verifiable steps. Use when planning or implementing features to keep the project maintainable and avoid overengineering.

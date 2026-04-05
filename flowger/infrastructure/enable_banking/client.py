@@ -11,7 +11,7 @@ class EnableBankingClient:
 
     BASE_URL = "https://api.enablebanking.com"
 
-    def __init__(self, app_id: str, private_key_path: str, environment: str = "SANDBOX") -> None:
+    def __init__(self, app_id: str, private_key_path: str) -> None:
         # Token is generated once per client lifetime — avoid re-reading key on every request.
         self.__token = generate_bearer_token(
             app_id=app_id,

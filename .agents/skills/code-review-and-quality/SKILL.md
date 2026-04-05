@@ -1,9 +1,3 @@
-
----
-
-## `.agents/skills/code-review-and-quality/SKILL.md`
-
-```md
 ---
 name: code-review-and-quality
 description: Reviews Python code for correctness, maintainability, structure, formatting, and quality gates. Use when reviewing code changes, validating generated code, or preparing a change for commit.

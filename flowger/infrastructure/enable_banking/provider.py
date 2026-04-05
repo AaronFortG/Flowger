@@ -12,6 +12,8 @@ from flowger.infrastructure.enable_banking.client import EnableBankingClient
 _AUTH_ENDPOINT = "/auth"
 _SESSIONS_ENDPOINT = "/sessions"
 _TRANSACTIONS_ENDPOINT = "/accounts/{account_id}/transactions"
+
+# Fixed state chosen because CSRF is not a relevant threat model for a single-user CLI.
 _AUTH_STATE = "flowger_sync"
 _ACCESS_VALID_DAYS = 180
 
@@ -23,13 +25,11 @@ class EnableBankingProvider:
         self,
         app_id: str,
         private_key_path: str,
-        environment: str,
         client: EnableBankingClient | None = None,
     ) -> None:
         self.__client = client or EnableBankingClient(
             app_id=app_id,
             private_key_path=private_key_path,
-            environment=environment,
         )
 
     def __enter__(self) -> "EnableBankingProvider":
@@ -145,7 +145,7 @@ def _resolve_id(tx: dict[str, Any]) -> str:
         indicator = tx.get("credit_debit_indicator", "")
         remittance_info = tx.get("remittance_information", "")
         raw_str = f"{date_str}_{amount_str}_{indicator}_{remittance_info}"
-        return hashlib.md5(raw_str.encode()).hexdigest()
+        return hashlib.sha256(raw_str.encode()).hexdigest()
     return str(tx_id)
 
 

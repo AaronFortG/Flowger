@@ -7,5 +7,4 @@ def create_bank_provider(settings: Settings) -> EnableBankingProvider:
     return EnableBankingProvider(
         app_id=settings.enablebanking_app_id,
         private_key_path=settings.enablebanking_key_path,
-        environment=settings.enablebanking_environment,
     )

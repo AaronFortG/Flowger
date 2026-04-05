@@ -24,7 +24,7 @@ def mock_jwt() -> Generator[MagicMock, None, None]:
 
 
 def test_client_get_success(mock_httpx_client: MagicMock, mock_jwt: MagicMock) -> None:
-    client = EnableBankingClient(app_id="test", private_key_path="path", environment="SANDBOX")
+    client = EnableBankingClient(app_id="test", private_key_path="path")
 
     mock_response = MagicMock()
     mock_response.json.return_value = {"a": "b"}
@@ -43,7 +43,7 @@ def test_client_get_success(mock_httpx_client: MagicMock, mock_jwt: MagicMock) -
 
 
 def test_client_post_error(mock_httpx_client: MagicMock, mock_jwt: MagicMock) -> None:
-    client = EnableBankingClient(app_id="test", private_key_path="path", environment="SANDBOX")
+    client = EnableBankingClient(app_id="test", private_key_path="path")
 
     mock_response = MagicMock()
     mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
