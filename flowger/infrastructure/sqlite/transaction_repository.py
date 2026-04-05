@@ -70,12 +70,12 @@ class SqliteTransactionRepository:
         return self.__map_rows(rows)
 
     def __map_rows(self, rows: list[Any]) -> list[Transaction]:
-        from datetime import datetime
+        from datetime import date, datetime
         return [
             Transaction(
                 id=row[0],
                 account_id=row[1],
-                date=row[2],
+                date=date.fromisoformat(row[2]),
                 amount=Decimal(row[3]),
                 currency=row[4],
                 payee=row[5],
