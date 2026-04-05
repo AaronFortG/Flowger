@@ -15,11 +15,7 @@ def config() -> None:
             loc = " -> ".join(str(x) for x in error["loc"])
             typer.echo(f"  - {loc}: {error['msg']}")
         raise typer.Exit(1)
-    except Exception:
-        typer.secho(
-            "Configuration error: One or more required environment variables "
-            "are missing or invalid.",
-            fg=typer.colors.RED,
-        )
+    except Exception as e:
+        typer.secho(f"Configuration error: {e}", fg=typer.colors.RED)
         typer.echo("Run 'flowger config --help' or check your .env file.")
         raise typer.Exit(1)

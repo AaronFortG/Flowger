@@ -44,6 +44,13 @@ def sync(
         )
 
         typer.echo(f"Syncing transactions for all accounts in {bank} ({country})...")
-        use_case.execute(session_id=session.session_id)
+        failures = use_case.execute(session_id=session.session_id)
+
+    if failures:
+        typer.secho(f"\nCompleted with {len(failures)} failures:", fg=typer.colors.YELLOW)
+        for account_id, error in failures:
+            typer.echo(f"  - Account {account_id}: {error}")
+        typer.secho("\nTransaction sync partially failed.", fg=typer.colors.RED)
+        raise typer.Exit(1)
 
     typer.secho("Transaction sync complete.", fg=typer.colors.GREEN)

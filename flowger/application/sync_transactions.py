@@ -21,9 +21,10 @@ class SyncTransactionsUseCase:
         self.__account_repository = account_repository
         self.__transaction_repository = transaction_repository
 
-    def execute(self, session_id: str) -> None:
-        """Fetch and save transactions for every account in the local database."""
+    def execute(self, session_id: str) -> list[tuple[str, str]]:
+        """Fetch and save transactions for accounts, returning any failures."""
         accounts = self.__account_repository.get_accounts()
+        failures: list[tuple[str, str]] = []
 
         for account in accounts:
             try:
@@ -32,5 +33,9 @@ class SyncTransactionsUseCase:
                 )
                 self.__transaction_repository.save_transactions(transactions)
             except (BankProviderError, ValueError) as e:
-                logger.error("Failed to sync transactions for account %s: %s", account.id, e)
+                msg = str(e)
+                logger.error("Failed to sync transactions for account %s: %s", account.id, msg)
+                failures.append((account.id, msg))
                 continue
+
+        return failures
