@@ -55,3 +55,19 @@ def test_client_post_error(mock_httpx_client: MagicMock, mock_jwt: MagicMock) ->
         client.post("/test", json={"data": 1})
 
     mock_httpx_client.post.assert_called_once()
+
+
+def test_client_get_network_error(mock_httpx_client: MagicMock, mock_jwt: MagicMock) -> None:
+    client = EnableBankingClient(app_id="test", private_key_path="path")
+    mock_httpx_client.get.side_effect = httpx.RequestError("Timeout", request=MagicMock())
+
+    with pytest.raises(BankProviderError, match="GET /test failed due to network error"):
+        client.get("/test", params=None)
+
+
+def test_client_post_network_error(mock_httpx_client: MagicMock, mock_jwt: MagicMock) -> None:
+    client = EnableBankingClient(app_id="test", private_key_path="path")
+    mock_httpx_client.post.side_effect = httpx.RequestError("Connection lost", request=MagicMock())
+
+    with pytest.raises(BankProviderError, match="POST /test failed due to network error"):
+        client.post("/test", json={"data": 1})

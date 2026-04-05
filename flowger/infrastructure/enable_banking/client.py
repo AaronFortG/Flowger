@@ -38,6 +38,8 @@ class EnableBankingClient:
             raise BankProviderError(
                 f"POST {endpoint} failed with status {e.response.status_code}: {e.response.text}"
             ) from e
+        except httpx.RequestError as e:
+            raise BankProviderError(f"POST {endpoint} failed due to network error: {e}") from e
 
     def get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Perform a GET request and return the parsed JSON body."""
@@ -51,6 +53,8 @@ class EnableBankingClient:
             raise BankProviderError(
                 f"GET {endpoint} failed with status {e.response.status_code}: {e.response.text}"
             ) from e
+        except httpx.RequestError as e:
+            raise BankProviderError(f"GET {endpoint} failed due to network error: {e}") from e
 
     def __enter__(self) -> "EnableBankingClient":
         return self
