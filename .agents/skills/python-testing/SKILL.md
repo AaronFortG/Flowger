@@ -23,13 +23,13 @@ Mirror the source structure whenever practical.
 Example:
 
 ```text
-src/flowger/domain/account.py
+flowger/domain/account.py
 tests/domain/test_account.py
 
-src/flowger/application/sync_account_transactions.py
+flowger/application/sync_account_transactions.py
 tests/application/test_sync_account_transactions.py
 
-src/flowger/ports/banking_provider.py
+flowger/ports/banking_provider.py
 tests/ports/test_banking_provider.py
 ```
 
@@ -102,8 +102,8 @@ pytest tests/
 # Run specific test file
 pytest tests/domain/test_account.py
 
-# Run with coverage
-pytest --cov=src/flowger
+# Run all tests with verbose output
+pytest -v tests/
 ```
 
 ## When to ask about testing
