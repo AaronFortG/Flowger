@@ -266,8 +266,6 @@ docker compose logs -f flowger-imagin
 
 To add a second bank, duplicate the service block in `docker-compose.yml` with a different `--bank`, `--country`, and `--cron` schedule. All services share the same `db` volume, so transactions from all banks land in one database. If your services also share the same `/exports` mount, make sure each service writes to a different export file instead of the default `/exports/transactions.csv`, for example by setting a distinct `DEFAULT_EXPORT_FILE` per service (such as `/exports/imagin-transactions.csv` and `/exports/santander-transactions.csv`) or by using `flowger export --output` with a bank-specific path.
 
-To add a second bank, duplicate the service block in `docker-compose.yml` with a different `--bank`, `--country`, and `--cron` schedule. All services share the same `db` volume, so transactions from all banks land in one database.
-
 ---
 
 ## License

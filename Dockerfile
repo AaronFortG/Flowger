@@ -20,6 +20,9 @@ FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
+# Install uv from a pinned image version for reproducible builds
+COPY --from=ghcr.io/astral-sh/uv:0.5.22 /uv /usr/local/bin/uv
+
 # Copy the pre-built virtualenv from the builder
 COPY --from=builder /app/.venv /app/.venv
 

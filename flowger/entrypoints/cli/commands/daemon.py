@@ -15,8 +15,6 @@ from flowger.infrastructure.sqlite import (
     init_db,
 )
 
-daemon_app = typer.Typer()
-
 
 def daemon(
     bank: str = typer.Option(..., "--bank", help="Bank name to sync"),
@@ -36,20 +34,19 @@ def daemon(
     while True:
         try:
             now = datetime.now(timezone.utc)
-            iter = croniter(cron, now)
-            next_run = iter.get_next(datetime)
+            cron_iter = croniter(cron, now)
+            next_run = cron_iter.get_next(datetime)
             sleep_seconds = (next_run - now).total_seconds()
 
             if sleep_seconds > 0:
                 typer.echo(
-                    f"Next sync scheduled: {next_run.isoformat()} "
-                    f"(sleeping {int(sleep_seconds)}s)"
+                    f"Next sync scheduled: {next_run.isoformat()} (sleeping {int(sleep_seconds)}s)"
                 )
                 time.sleep(sleep_seconds)
 
             typer.echo(f"\n[{datetime.now(timezone.utc).isoformat()}] Running scheduled sync...")
-            _run_sync(bank, country, settings)
-            typer.echo("Sync completed successfully.")
+            if _run_sync(bank, country, settings):
+                typer.echo("Sync completed successfully.")
 
         except KeyboardInterrupt:
             typer.echo("\nDaemon stopped by user.")
@@ -60,7 +57,7 @@ def daemon(
             time.sleep(60)
 
 
-def _run_sync(bank: str, country: str, settings: Any) -> None:
+def _run_sync(bank: str, country: str, settings: Any) -> bool:
     session_repo = SqliteSessionRepository(settings.database_path)
     session = session_repo.get_latest_session(bank_name=bank, country=country)
 
@@ -69,7 +66,7 @@ def _run_sync(bank: str, country: str, settings: Any) -> None:
             f"No session found for {bank} ({country}). Run setup first.",
             fg=typer.colors.RED,
         )
-        return
+        return False
 
     account_repo = SqliteAccountRepository(settings.database_path)
     transaction_repo = SqliteTransactionRepository(settings.database_path)
@@ -85,5 +82,7 @@ def _run_sync(bank: str, country: str, settings: Any) -> None:
         )
         failures = use_case.execute(session_id=session.session_id, accounts=accounts)
 
-    if failures:
         typer.secho(f"Sync completed with {len(failures)} failures.", fg=typer.colors.YELLOW)
+        return False
+
+    return True

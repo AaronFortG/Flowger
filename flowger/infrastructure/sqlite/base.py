@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS accounts (
     id TEXT PRIMARY KEY,
     iban TEXT NOT NULL,
     name TEXT NOT NULL,
-    currency TEXT NOT NULL
+    currency TEXT NOT NULL,
+    bank_name TEXT NOT NULL,
+    country TEXT NOT NULL
 );
 """
 

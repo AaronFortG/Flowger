@@ -41,7 +41,7 @@ class SqliteAccountRepository:
     ) -> list[Account]:
         """Retrieve stored accounts, optionally filtered by bank and country."""
         with sqlite3.connect(self.__db_path) as conn:
-            if bank_name and country:
+            if bank_name is not None and country is not None:
                 rows = conn.execute(_QUERY_GET_FILTERED, (bank_name, country)).fetchall()
             else:
                 rows = conn.execute(_QUERY_GET_ALL).fetchall()
