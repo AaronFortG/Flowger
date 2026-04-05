@@ -7,9 +7,6 @@ class Settings(BaseSettings):
 
     # Enable Banking configuration
     enablebanking_app_id: str = Field(..., description="Application ID from Enable Banking")
-    enablebanking_environment: str = Field(
-        ..., description="Target environment: SANDBOX or PRODUCTION"
-    )
     enablebanking_key_path: str = Field(
         ..., description="Path to the RSA private key used for JWT signing"
     )

@@ -4,20 +4,19 @@ from flowger.infrastructure.enable_banking.client import EnableBankingClient
 from flowger.infrastructure.enable_banking.provider import EnableBankingProvider
 
 
-def _make_provider() -> EnableBankingProvider:
+def _make_provider() -> tuple[EnableBankingProvider, Mock]:
     """Create an EnableBankingProvider with a mock client injected, no real key needed."""
     mock_client = Mock(spec=EnableBankingClient)
     return EnableBankingProvider(
         app_id="dummy",
         private_key_path="dummy",
         client=mock_client,
-    )
+    ), mock_client
 
 
 def test_start_authorization_returns_url() -> None:
     """Verify that start_authorization sends correct payload and extracts URL."""
-    provider = _make_provider()
-    mock_client = provider._EnableBankingProvider__client  # type: ignore[attr-defined]
+    provider, mock_client = _make_provider()
     mock_client.post.return_value = {"url": "https://auth.enablebanking.com/abcd123"}
 
     url = provider.start_authorization(
@@ -40,8 +39,7 @@ def test_start_authorization_returns_url() -> None:
 
 def test_start_authorization_missing_url() -> None:
     """Verify an empty string is returned when the API response has no 'url' field."""
-    provider = _make_provider()
-    mock_client = provider._EnableBankingProvider__client  # type: ignore[attr-defined]
+    provider, mock_client = _make_provider()
     mock_client.post.return_value = {}  # 'url' key absent
 
     url = provider.start_authorization(
@@ -55,8 +53,7 @@ def test_start_authorization_missing_url() -> None:
 
 
 def test_authorize_session_exchanges_code_for_session_id_and_returns_accounts() -> None:
-    provider = _make_provider()
-    mock_client = provider._EnableBankingProvider__client  # type: ignore[attr-defined]
+    provider, mock_client = _make_provider()
     mock_client.post.return_value = {
         "session_id": "sess-xyz789",
         "accounts": [
@@ -87,8 +84,7 @@ def test_authorize_session_exchanges_code_for_session_id_and_returns_accounts() 
 
 
 def test_fetch_transactions_maps_response_to_domain() -> None:
-    provider = _make_provider()
-    mock_client = provider._EnableBankingProvider__client  # type: ignore[attr-defined]
+    provider, mock_client = _make_provider()
     mock_client.get.return_value = {
         "transactions": [
             {
@@ -117,8 +113,7 @@ def test_fetch_transactions_maps_response_to_domain() -> None:
 
 def test_fetch_transactions_payee_fallback() -> None:
     """Verify payee falls back to remittance info when names are absent."""
-    provider = _make_provider()
-    mock_client = provider._EnableBankingProvider__client  # type: ignore[attr-defined]
+    provider, mock_client = _make_provider()
     mock_client.get.return_value = {
         "transactions": [
             {
@@ -138,8 +133,7 @@ def test_fetch_transactions_payee_fallback() -> None:
 
 def test_fetch_transactions_no_payee_fallback() -> None:
     """Verify payee defaults to 'No payee' when all name fields are absent."""
-    provider = _make_provider()
-    mock_client = provider._EnableBankingProvider__client  # type: ignore[attr-defined]
+    provider, mock_client = _make_provider()
     mock_client.get.return_value = {
         "transactions": [
             {

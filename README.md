@@ -48,7 +48,6 @@ Edit `.env`:
 
 ```dotenv
 ENABLEBANKING_APP_ID=your_app_id
-ENABLEBANKING_ENVIRONMENT=SANDBOX       # or PRODUCTION
 ENABLEBANKING_KEY_PATH=/path/to/private.key
 
 # Optional (commented = default value applies)
@@ -68,7 +67,6 @@ uv run flowger config
 Expected output:
 ```
 Configuration is valid.
-Environment: SANDBOX
 ```
 
 ---
