@@ -15,7 +15,7 @@ def test_create_account_success() -> None:
 def test_create_account_invalid_data() -> None:
     """Verify validation fails if required fields are missing."""
     with pytest.raises(ValidationError):
-        Account(  # type: ignore[call-arg]
+        Account(
             id="acc_123",
             name="Main Checking",
             currency="EUR",

@@ -28,7 +28,7 @@ def test_create_transaction_success() -> None:
 def test_create_transaction_invalid_data() -> None:
     """Verify validation fails when required fields are missing."""
     with pytest.raises(ValidationError):
-        Transaction(  # type: ignore[call-arg]
+        Transaction(
             id="txn_456",
             account_id="acc_123",
             currency="EUR",

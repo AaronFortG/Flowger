@@ -27,7 +27,8 @@ def sync(
 
     if session is None:
         typer.secho(
-            f"No session found for {bank} ({country}). Run `flowger login` first.",
+            f"No session found for {bank} ({country}). "
+            "Run `flowger login` AND `flowger authorize` first.",
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)

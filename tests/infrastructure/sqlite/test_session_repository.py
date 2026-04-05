@@ -22,7 +22,7 @@ def _make_session(**kwargs: object) -> BankSession:
         "created_at": datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
     }
     defaults.update(kwargs)
-    return BankSession(**defaults)  # type: ignore[arg-type]
+    return BankSession(**defaults)
 
 
 def test_save_and_retrieve_session(db_path: str) -> None:
