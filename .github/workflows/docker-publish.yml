@@ -12,7 +12,7 @@ env:
 jobs:
   test:
     name: Run Tests & Linters
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
   build-and-push:
     name: Build and Push
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write    # Push to GHCR
@@ -103,7 +103,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write  # Required to create releases on GitHub
     steps:
