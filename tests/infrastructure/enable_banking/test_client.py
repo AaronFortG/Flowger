@@ -18,8 +18,14 @@ def mock_httpx_client() -> Generator[MagicMock, None, None]:
 
 @pytest.fixture
 def mock_jwt() -> Generator[MagicMock, None, None]:
-    with patch("flowger.infrastructure.enable_banking.client.generate_bearer_token") as mock:
+    with patch("flowger.infrastructure.enable_banking.client.sign_jwt") as mock:
         mock.return_value = "fake.jwt.token"
+        yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_open() -> Generator[MagicMock, None, None]:
+    with patch("builtins.open", MagicMock()) as mock:
         yield mock
 
 
