@@ -24,6 +24,7 @@ def test_start_authorization_returns_url() -> None:
         bank_name="Imagin",
         country="ES",
         redirect_url="http://localhost:8000/callback",
+        state="mock_state",
     )
 
     assert url == "https://auth.enablebanking.com/abcd123"
@@ -44,7 +45,10 @@ def test_start_authorization_missing_url() -> None:
     mock_client.post.return_value = {}  # 'url' key absent
 
     url = provider.start_authorization(
-        bank_name="Imagin", country="ES", redirect_url="http://localhost:8000/callback"
+        bank_name="Imagin",
+        country="ES",
+        redirect_url="http://localhost:8000/callback",
+        state="mock_state",
     )
 
     assert url == ""

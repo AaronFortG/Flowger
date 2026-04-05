@@ -13,8 +13,6 @@ _AUTH_ENDPOINT = "/auth"
 _SESSIONS_ENDPOINT = "/sessions"
 _TRANSACTIONS_ENDPOINT = "/accounts/{account_id}/transactions"
 
-# Fixed state chosen because CSRF is not a relevant threat model for a single-user CLI.
-_AUTH_STATE = "flowger_sync"
 _ACCESS_VALID_DAYS = 180
 
 
@@ -39,7 +37,7 @@ class EnableBankingProvider:
         self.__client.close()
 
     def start_authorization(
-        self, bank_name: str, country: str, redirect_url: str, psu_type: str = ""
+        self, bank_name: str, country: str, redirect_url: str, state: str, psu_type: str = ""
     ) -> str:
         """
         Initiate an authorization flow.
@@ -53,7 +51,7 @@ class EnableBankingProvider:
                 "name": bank_name,
                 "country": country,
             },
-            "state": _AUTH_STATE,
+            "state": state,
             "redirect_url": redirect_url,
         }
         if psu_type:
