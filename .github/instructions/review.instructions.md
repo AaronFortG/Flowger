@@ -27,7 +27,7 @@ Treat these instructions as the default source of truth for review behavior. Onl
 
 ## Python expectations
 
-- Use Python 3.12 as the baseline.
+- Use Python 3.10 as the baseline.
 - Review all Python changes for correctness, readability, simplicity, and maintainability.
 - Check that names are descriptive and that functions and classes have clear responsibilities.
 - Prefer explicit, easy-to-follow control flow over clever or overly compact code.
