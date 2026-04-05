@@ -11,6 +11,7 @@ class ActualCsvExporter(ExportService):
     """
 
     _HEADERS = ["Date", "Payee", "Notes", "Amount"]
+    _FORMULA_PREFIXES = ("=", "+", "-", "@")
 
     def __init__(self, delimiter: str = ",", safe: bool = True) -> None:
         if len(delimiter) != 1:
@@ -37,7 +38,7 @@ class ActualCsvExporter(ExportService):
                         .replace("\r", " ")
                     )
                     payee_val = payee_val.replace(self.__delimiter, " ")
-                    if payee_val.startswith(("=", "+", "-", "@")):
+                    if payee_val.startswith(self._FORMULA_PREFIXES):
                         payee_val = f"'{payee_val}"
                     notes_val = (
                         tx.notes.replace('"', "")
@@ -46,7 +47,7 @@ class ActualCsvExporter(ExportService):
                         .replace("\r", " ")
                     )
                     notes_val = notes_val.replace(self.__delimiter, " ")
-                    if notes_val.startswith(("=", "+", "-", "@")):
+                    if notes_val.startswith(self._FORMULA_PREFIXES):
                         notes_val = f"'{notes_val}"
                 else:
                     payee_val = tx.payee
