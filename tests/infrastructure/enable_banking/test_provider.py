@@ -132,7 +132,7 @@ def test_fetch_transactions_payee_fallback() -> None:
 
 
 def test_fetch_transactions_no_payee_fallback() -> None:
-    """Verify payee defaults to 'No payee' when all name fields are absent."""
+    """Verify payee defaults to 'Unknown Payee' when all name fields are absent."""
     provider, mock_client = _make_provider()
     mock_client.get.return_value = {
         "transactions": [
