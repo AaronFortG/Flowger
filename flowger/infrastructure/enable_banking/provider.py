@@ -1,5 +1,5 @@
 import datetime
-import uuid
+import hashlib
 from decimal import Decimal
 from typing import Any
 
@@ -139,7 +139,13 @@ def _resolve_id(tx: dict[str, Any]) -> str:
     """Return the unique identifier for a transaction."""
     tx_id = tx.get("entry_reference")
     if not tx_id:
-        return str(uuid.uuid4())
+        amount_obj = tx.get("transaction_amount") or {}
+        amount_str = str(amount_obj.get("amount", ""))
+        date_str = str(tx.get("booking_date") or tx.get("value_date") or "")
+        indicator = tx.get("credit_debit_indicator", "")
+        remittance_info = tx.get("remittance_information", "")
+        raw_str = f"{date_str}_{amount_str}_{indicator}_{remittance_info}"
+        return hashlib.md5(raw_str.encode()).hexdigest()
     return str(tx_id)
 
 
@@ -159,7 +165,7 @@ def _resolve_amount(tx: dict[str, Any]) -> Decimal:
     raw_amount = amount_obj.get("amount", "0")
     amount = Decimal(str(raw_amount))
 
-    if indicator == PaymentType.DEBIT:
+    if indicator == PaymentType.DEBIT.value:
         return -abs(amount)
     return abs(amount)
 
@@ -180,7 +186,7 @@ def _resolve_payee(tx: dict[str, Any]) -> str:
     else:
         remittance_str = str(remittance) if remittance else ""
 
-    if indicator == PaymentType.DEBIT:
+    if indicator == PaymentType.DEBIT.value:
         # It's an expense, so the payee is the creditor
         return (
             (tx.get("creditor") or {}).get("name")

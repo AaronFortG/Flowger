@@ -39,8 +39,9 @@ format:  ## Auto-format code with ruff
 typecheck:  ## Run mypy type checker
 	uv run mypy flowger/
 
-.PHONY: check
+.PHONY: check all-checks
 check: lint typecheck test  ## Run lint + typecheck + tests
+all-checks: check  ## Alias for make check
 
 # ─── Flowger CLI shortcuts ───────────────────────────────────────────────────
 
@@ -76,4 +77,4 @@ db-transactions:  ## Print last 20 transactions directly from SQLite
 
 .PHONY: clean-db
 clean-db:  ## Delete the local SQLite database (irreversible)
-	@read -p "Delete flowger.db? [y/N] " ans; [ "$$ans" = "y" ] && rm -f flowger.db && echo "Deleted." || echo "Aborted."
+	@printf '%s' "Delete flowger.db? [y/N] "; read ans; [ "$$ans" = "y" ] && rm -f flowger.db && echo "Deleted." || echo "Aborted."

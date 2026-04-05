@@ -13,6 +13,8 @@ class ActualCsvExporter(ExportService):
     _HEADERS = ["Date", "Payee", "Notes", "Amount"]
 
     def __init__(self, delimiter: str = ",", safe: bool = True) -> None:
+        if len(delimiter) != 1:
+            raise ValueError(f"CSV delimiter must be a single character, got: {delimiter!r}")
         self.__delimiter = delimiter
         self.__safe = safe
 

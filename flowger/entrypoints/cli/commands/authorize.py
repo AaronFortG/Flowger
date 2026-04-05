@@ -32,6 +32,7 @@ def authorize(
         account_repo.save_accounts(accounts)
 
         typer.secho(
-            f"Session authorized and {len(accounts)} accounts saved. Session ID: {session.session_id}",
+            f"Session authorized and {len(accounts)} accounts saved. "
+            f"Session ID: {session.session_id}",
             fg=typer.colors.GREEN,
         )
