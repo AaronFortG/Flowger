@@ -14,7 +14,9 @@ def test_sync_transactions_use_case() -> None:
     account_repo = Mock()
     transaction_repo = Mock()
 
-    account = Account(id="acc_1", iban="IBAN1", name="Acc 1", currency="EUR", bank_name="Imagin", country="ES")
+    account = Account(
+        id="acc_1", iban="IBAN1", name="Acc 1", currency="EUR", bank_name="Imagin", country="ES"
+    )
     account_repo.get_accounts.return_value = [account]
 
     transaction = Transaction(
@@ -49,8 +51,12 @@ def test_sync_transactions_continues_on_failure() -> None:
     account_repo = Mock()
     transaction_repo = Mock()
 
-    acc1 = Account(id="fail", iban="IBAN1", name="Fail", currency="EUR", bank_name="Imagin", country="ES")
-    acc2 = Account(id="success", iban="IBAN2", name="Success", currency="EUR", bank_name="Imagin", country="ES")
+    acc1 = Account(
+        id="fail", iban="IBAN1", name="Fail", currency="EUR", bank_name="Imagin", country="ES"
+    )
+    acc2 = Account(
+        id="success", iban="IBAN2", name="Success", currency="EUR", bank_name="Imagin", country="ES"
+    )
     account_repo.get_accounts.return_value = [acc1, acc2]
 
     # First call raises BankProviderError, second succeeds
@@ -80,8 +86,12 @@ def test_sync_transactions_continues_on_value_error() -> None:
     account_repo = Mock()
     transaction_repo = Mock()
 
-    acc1 = Account(id="parse_fail", iban="IBAN1", name="Fail", currency="EUR", bank_name="Imagin", country="ES")
-    acc2 = Account(id="success", iban="IBAN2", name="Success", currency="EUR", bank_name="Imagin", country="ES")
+    acc1 = Account(
+        id="parse_fail", iban="IBAN1", name="Fail", currency="EUR", bank_name="Imagin", country="ES"
+    )
+    acc2 = Account(
+        id="success", iban="IBAN2", name="Success", currency="EUR", bank_name="Imagin", country="ES"
+    )
     account_repo.get_accounts.return_value = [acc1, acc2]
 
     # First call raises ValueError (simulating malformed data), second succeeds

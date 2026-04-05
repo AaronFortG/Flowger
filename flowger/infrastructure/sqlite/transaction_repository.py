@@ -71,6 +71,7 @@ class SqliteTransactionRepository:
 
     def __map_rows(self, rows: list[Any]) -> list[Transaction]:
         from datetime import date, datetime
+
         return [
             Transaction(
                 id=row[0],

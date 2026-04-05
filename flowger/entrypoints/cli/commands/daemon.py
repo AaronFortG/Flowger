@@ -1,8 +1,9 @@
 import time
 from datetime import datetime, timezone
+from typing import Any
 
 import typer
-from croniter import croniter
+from croniter import croniter  # type: ignore
 
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.entrypoints.cli.helpers import create_bank_provider
@@ -20,7 +21,9 @@ daemon_app = typer.Typer()
 def daemon(
     bank: str = typer.Option(..., "--bank", help="Bank name to sync"),
     country: str = typer.Option(..., "--country", help="Country code"),
-    cron: str = typer.Option(..., "--cron", help="Cron expression for scheduling (e.g. '0 3 * * *')"),
+    cron: str = typer.Option(
+        ..., "--cron", help="Cron expression for scheduling (e.g. '0 3 * * *')"
+    ),
 ) -> None:
     """
     Run Flowger in daemon mode, syncing transactions on a schedule.
@@ -38,7 +41,10 @@ def daemon(
             sleep_seconds = (next_run - now).total_seconds()
 
             if sleep_seconds > 0:
-                typer.echo(f"Next sync scheduled for: {next_run.isoformat()} (sleeping {int(sleep_seconds)}s)")
+                typer.echo(
+                    f"Next sync scheduled: {next_run.isoformat()} "
+                    f"(sleeping {int(sleep_seconds)}s)"
+                )
                 time.sleep(sleep_seconds)
 
             typer.echo(f"\n[{datetime.now(timezone.utc).isoformat()}] Running scheduled sync...")
@@ -54,7 +60,7 @@ def daemon(
             time.sleep(60)
 
 
-def _run_sync(bank: str, country: str, settings: any) -> None:
+def _run_sync(bank: str, country: str, settings: Any) -> None:
     session_repo = SqliteSessionRepository(settings.database_path)
     session = session_repo.get_latest_session(bank_name=bank, country=country)
 

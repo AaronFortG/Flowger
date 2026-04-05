@@ -88,7 +88,7 @@ def test_actual_csv_exporter_safe_mode(tmp_path: Path) -> None:
             notes="Note with 'quotes'",
         ),
     ]
-    
+
     # Test safe mode (default)
     exporter_safe = ActualCsvExporter(safe=True)
     exporter_safe.write_transactions(transactions, str(output_file))

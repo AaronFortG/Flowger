@@ -25,7 +25,6 @@ class ExportTransactionsUseCase:
         else:
             transactions = self.__transaction_repository.get_transactions_for_account(account_id)
 
-
         self.__export_service.write_transactions(transactions, output_path)
 
         if new_only:

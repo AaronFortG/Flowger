@@ -21,7 +21,16 @@ def _make_session() -> BankSession:
 
 
 def _make_accounts() -> list[Account]:
-    return [Account(id="acc-1", iban="ES001", name="Imagin Checking", currency="EUR", bank_name="Imagin", country="ES")]
+    return [
+        Account(
+            id="acc-1",
+            iban="ES001",
+            name="Imagin Checking",
+            currency="EUR",
+            bank_name="Imagin",
+            country="ES",
+        )
+    ]
 
 
 @pytest.fixture()
