@@ -36,7 +36,7 @@ class EnableBankingClient:
             return data
         except httpx.HTTPStatusError as e:
             raise BankProviderError(
-                f"POST {endpoint} failed with status {e.response.status_code}: {e.response.text}"
+                f"POST {endpoint} failed with status {e.response.status_code}"
             ) from e
         except httpx.RequestError as e:
             raise BankProviderError(f"POST {endpoint} failed due to network error: {e}") from e
@@ -51,7 +51,7 @@ class EnableBankingClient:
             return data
         except httpx.HTTPStatusError as e:
             raise BankProviderError(
-                f"GET {endpoint} failed with status {e.response.status_code}: {e.response.text}"
+                f"GET {endpoint} failed with status {e.response.status_code}"
             ) from e
         except httpx.RequestError as e:
             raise BankProviderError(f"GET {endpoint} failed due to network error: {e}") from e
