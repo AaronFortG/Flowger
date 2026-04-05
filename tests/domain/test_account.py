@@ -6,7 +6,14 @@ from flowger.domain.account import Account
 
 def test_create_account_success() -> None:
     """Verify an Account can be instantiated with valid data."""
-    account = Account(id="acc_123", iban="ES1234567890", name="Main Checking", currency="EUR")
+    account = Account(
+        id="acc_123",
+        iban="ES1234567890",
+        name="Main Checking",
+        currency="EUR",
+        bank_name="Imagin",
+        country="ES",
+    )
 
     assert account.id == "acc_123"
     assert account.iban == "ES1234567890"

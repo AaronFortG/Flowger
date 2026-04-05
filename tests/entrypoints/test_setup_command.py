@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -20,11 +21,11 @@ def _make_session() -> BankSession:
 
 
 def _make_accounts() -> list[Account]:
-    return [Account(id="acc-1", iban="ES001", name="Imagin Checking", currency="EUR")]
+    return [Account(id="acc-1", iban="ES001", name="Imagin Checking", currency="EUR", bank_name="Imagin", country="ES")]
 
 
 @pytest.fixture()
-def mock_settings(tmp_path: pytest.TempPathFactory) -> MagicMock:
+def mock_settings(tmp_path: Path) -> MagicMock:
     settings = MagicMock()
     settings.database_path = str(tmp_path / "test.db")
     settings.default_bank = "Imagin"
@@ -110,5 +111,5 @@ def test_setup_with_sync_failures(mock_settings: MagicMock) -> None:
         runner = CliRunner()
         result = runner.invoke(app, ["setup"])
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
     assert "failure" in result.output.lower()

@@ -28,6 +28,11 @@ class AuthorizeSessionUseCase:
         session, accounts = self.__provider.authorize_session(
             code=code, bank_name=bank_name, country=country
         )
+
+        for account in accounts:
+            account.bank_name = bank_name
+            account.country = country
+
         self.__session_repository.save_session(session)
         self.__account_repository.save_accounts(accounts)
         return session, accounts

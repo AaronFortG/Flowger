@@ -93,6 +93,8 @@ class EnableBankingProvider:
                     iban=str(iban),
                     name=str(full_name),
                     currency=currency,
+                    bank_name=bank_name,
+                    country=country,
                 )
             )
 

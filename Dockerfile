@@ -5,14 +5,14 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Install uv from a pinned image version for reproducible builds
+COPY --from=ghcr.io/astral-sh/uv:0.5.22 /uv /usr/local/bin/uv
 
 # Copy dependency manifests first for layer caching
 COPY pyproject.toml uv.lock ./
 
-# Install production deps only into /app/.venv
-RUN uv sync --frozen --no-dev
+# Install production dependencies only first, without installing the local project
+RUN uv sync --frozen --no-dev --no-install-project
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
 # Lean final image: only the venv and source code.
@@ -23,9 +23,10 @@ WORKDIR /app
 # Copy the pre-built virtualenv from the builder
 COPY --from=builder /app/.venv /app/.venv
 
-# Copy application source
+# Copy application source, then install the project into /app/.venv
 COPY flowger/ ./flowger/
 COPY pyproject.toml ./
+RUN /app/.venv/bin/uv sync --frozen --no-dev
 
 # Put the venv on PATH so `flowger` CLI script resolves correctly
 ENV PATH="/app/.venv/bin:$PATH"

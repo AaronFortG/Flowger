@@ -3,15 +3,22 @@ import sqlite3
 from flowger.domain.account import Account
 
 _QUERY_SAVE = """
-    INSERT INTO accounts (id, iban, name, currency)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO accounts (id, iban, name, currency, bank_name, country)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
         iban=excluded.iban,
         name=excluded.name,
-        currency=excluded.currency;
+        currency=excluded.currency,
+        bank_name=excluded.bank_name,
+        country=excluded.country;
 """
 
-_QUERY_GET_ALL = "SELECT id, iban, name, currency FROM accounts;"
+_QUERY_GET_ALL = "SELECT id, iban, name, currency, bank_name, country FROM accounts;"
+_QUERY_GET_FILTERED = """
+    SELECT id, iban, name, currency, bank_name, country
+    FROM accounts
+    WHERE bank_name = ? AND country = ?;
+"""
 
 
 class SqliteAccountRepository:
@@ -22,13 +29,31 @@ class SqliteAccountRepository:
 
     def save_accounts(self, accounts: list[Account]) -> None:
         """Upsert accounts (inserts new ones and updates fields for existing ones)."""
-        rows = [(acc.id, acc.iban, acc.name, acc.currency) for acc in accounts]
+        rows = [
+            (acc.id, acc.iban, acc.name, acc.currency, acc.bank_name, acc.country)
+            for acc in accounts
+        ]
         with sqlite3.connect(self.__db_path) as conn:
             conn.executemany(_QUERY_SAVE, rows)
 
-    def get_accounts(self) -> list[Account]:
-        """Retrieve all stored accounts from the database."""
+    def get_accounts(
+        self, bank_name: str | None = None, country: str | None = None
+    ) -> list[Account]:
+        """Retrieve stored accounts, optionally filtered by bank and country."""
         with sqlite3.connect(self.__db_path) as conn:
-            rows = conn.execute(_QUERY_GET_ALL).fetchall()
+            if bank_name and country:
+                rows = conn.execute(_QUERY_GET_FILTERED, (bank_name, country)).fetchall()
+            else:
+                rows = conn.execute(_QUERY_GET_ALL).fetchall()
 
-        return [Account(id=row[0], iban=row[1], name=row[2], currency=row[3]) for row in rows]
+        return [
+            Account(
+                id=row[0],
+                iban=row[1],
+                name=row[2],
+                currency=row[3],
+                bank_name=row[4],
+                country=row[5],
+            )
+            for row in rows
+        ]

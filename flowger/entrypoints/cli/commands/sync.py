@@ -36,6 +36,8 @@ def sync(
     account_repo = SqliteAccountRepository(settings.database_path)
     transaction_repo = SqliteTransactionRepository(settings.database_path)
 
+    accounts = account_repo.get_accounts(bank_name=bank, country=country)
+
     with create_bank_provider(settings) as provider:
         use_case = SyncTransactionsUseCase(
             provider=provider,
@@ -44,7 +46,7 @@ def sync(
         )
 
         typer.echo(f"Syncing transactions for all accounts in {bank} ({country})...")
-        failures = use_case.execute(session_id=session.session_id)
+        failures = use_case.execute(session_id=session.session_id, accounts=accounts)
 
     if failures:
         typer.secho(f"\nCompleted with {len(failures)} failures:", fg=typer.colors.YELLOW)

@@ -81,6 +81,8 @@ def test_authorize_session_exchanges_code_for_session_id_and_returns_accounts() 
     assert accounts[0].iban == "ES00000000001"
     assert accounts[0].name == "ImaginBank Checking Account"
     assert accounts[0].currency == "EUR"
+    assert accounts[0].bank_name == "Imagin"
+    assert accounts[0].country == "ES"
 
 
 def test_fetch_transactions_maps_response_to_domain() -> None:

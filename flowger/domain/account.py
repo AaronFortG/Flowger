@@ -8,3 +8,5 @@ class Account(BaseModel):
     iban: str
     name: str
     currency: str
+    bank_name: str
+    country: str

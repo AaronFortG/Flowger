@@ -78,7 +78,7 @@ def setup(
             account_repository=account_repo,
             transaction_repository=transaction_repo,
         )
-        failures = sync_use_case.execute(session_id=session.session_id)
+        failures = sync_use_case.execute(session_id=session.session_id, accounts=accounts)
 
         if failures:
             typer.secho(
@@ -98,5 +98,8 @@ def setup(
         typer.echo(
             "\nSetup complete! Use the account IDs above with "
             "`flowger export --account-id <ID>` to export transactions.\n"
-            "If running via Docker, start the daemon with `docker compose up -d`."
+            "If running via Docker, start the services with `docker compose up -d`."
         )
+
+        if failures:
+            raise typer.Exit(1)

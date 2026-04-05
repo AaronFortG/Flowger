@@ -39,3 +39,11 @@ def init_db(db_path: str) -> None:
         conn.execute(_SCHEMA_ACCOUNTS)
         conn.execute(_SCHEMA_SESSIONS)
         conn.execute(_SCHEMA_TRANSACTIONS)
+
+        # Migration: Add bank_name and country if they don't exist
+        cursor = conn.execute("PRAGMA table_info(accounts)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "bank_name" not in columns:
+            conn.execute("ALTER TABLE accounts ADD COLUMN bank_name TEXT NOT NULL DEFAULT ''")
+        if "country" not in columns:
+            conn.execute("ALTER TABLE accounts ADD COLUMN country TEXT NOT NULL DEFAULT ''")

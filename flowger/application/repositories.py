@@ -10,6 +10,8 @@ class AccountRepository(Protocol):
         """Persist a list of accounts to local storage (insert or update)."""
         pass
 
-    def get_accounts(self) -> list[Account]:
-        """Retrieve all stored accounts from local storage."""
+    def get_accounts(
+        self, bank_name: str | None = None, country: str | None = None
+    ) -> list[Account]:
+        """Retrieve stored accounts, optionally filtered by bank and country."""
         pass
