@@ -1,0 +1,44 @@
+# Flowger docker-compose — one service per bank.
+# All services share the same `db` volume so all transactions land in one database.
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f flowger-imagin
+#   docker compose stop flowger-imagin
+
+services:
+  flowger-imagin:
+    image: ghcr.io/aaronfortg/flowger:latest
+    # Override `image` with `build: .` to test a local build instead:
+    # build: .
+    command: >
+      daemon
+      --bank Imagin
+      --country ES
+      --cron "0 3 * * *"
+    volumes:
+      - db:/data
+      - ./keys/private.pem:/keys/private.pem:ro
+      - ./exports:/exports
+    env_file: .env
+    restart: unless-stopped
+
+  # ── Additional banks ────────────────────────────────────────────────────────
+  # Uncomment and adjust to add more banks. Each runs its own schedule independently.
+  #
+  # flowger-n26:
+  #   image: ghcr.io/aaronfortg/flowger:latest
+  #   command: >
+  #     daemon
+  #     --bank N26
+  #     --country DE
+  #     --cron "0 6 * * *"
+  #   volumes:
+  #     - db:/data
+  #     - ./keys/private.pem:/keys/private.pem:ro
+  #     - ./exports:/exports
+  #   env_file: .env
+  #   restart: unless-stopped
+
+volumes:
+  db:
