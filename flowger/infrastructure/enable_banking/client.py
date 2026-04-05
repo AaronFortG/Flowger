@@ -1,9 +1,10 @@
+import time
 from typing import Any
 
 import httpx
 
-from flowger.domain.exceptions import BankProviderError
-from flowger.infrastructure.enable_banking.auth import generate_bearer_token
+from flowger.domain.exceptions import BankProviderError, KeyReadError
+from flowger.infrastructure.enable_banking.auth import sign_jwt
 
 
 class EnableBankingClient:
@@ -12,15 +13,28 @@ class EnableBankingClient:
     BASE_URL = "https://api.enablebanking.com"
 
     def __init__(self, app_id: str, private_key_path: str) -> None:
-        # Token is generated once per client lifetime — avoid re-reading key on every request.
-        self.__token = generate_bearer_token(
-            app_id=app_id,
-            private_key_path=private_key_path,
-        )
+        self.__app_id = app_id
+        # Read the key once at creation to avoid disk IO on every request.
+        try:
+            with open(private_key_path, "rb") as f:
+                self.__private_key = f.read()
+        except OSError as e:
+            raise KeyReadError(f"Cannot read private key at '{private_key_path}': {e}") from e
+
+        # Token state for auto-refresh
+        self.__token: str | None = None
+        self.__token_expires_at: float = 0.0
+
         # Client is reused across requests for connection pooling.
         self.__http = httpx.Client(timeout=30.0)
 
     def __get_headers(self) -> dict[str, str]:
+        # Refresh token if missing or near expiry (5 minute buffer)
+        if self.__token is None or time.time() > (self.__token_expires_at - 300):
+            # Token is valid for 1 hour (3600s)
+            self.__token = sign_jwt(self.__app_id, self.__private_key)
+            self.__token_expires_at = time.time() + 3600
+
         return {
             "Authorization": f"Bearer {self.__token}",
             "Content-Type": "application/json",

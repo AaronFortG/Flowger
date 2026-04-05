@@ -13,7 +13,7 @@ def generate_bearer_token(
     app_id: str, private_key_path: str, expiration_seconds: int = 3600
 ) -> str:
     """
-    Generate an RS256 JWT string as expected by EnableBanking's authorization header.
+    Read the private key from disk and generate an RS256 JWT string.
     """
     try:
         with open(private_key_path, "rb") as key_file:
@@ -21,6 +21,13 @@ def generate_bearer_token(
     except OSError as e:
         raise KeyReadError(f"Cannot read private key at '{private_key_path}': {e}") from e
 
+    return sign_jwt(app_id, private_key, expiration_seconds)
+
+
+def sign_jwt(app_id: str, private_key: bytes, expiration_seconds: int = 3600) -> str:
+    """
+    Sign an RS256 JWT string as expected by EnableBanking's authorization header.
+    """
     now = int(time.time())
 
     headers = {
