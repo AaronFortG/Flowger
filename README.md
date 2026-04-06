@@ -231,6 +231,43 @@ Transactions are sorted oldest-first. Amounts follow the sign convention: **posi
 
 ---
 
+## Running with Docker
+
+Pre-built images are published to both Docker Hub and GitHub Container Registry on every release:
+
+```bash
+docker pull aaronfortg/flowger:latest
+# or
+docker pull ghcr.io/aaronfortg/flowger:latest
+```
+
+### One-shot commands
+
+Run any CLI command and exit. Mount your key and data directory:
+
+```bash
+docker run --rm \
+  -v $(pwd)/data:/data \
+  -v $(pwd)/keys/private.pem:/keys/private.pem:ro \
+  -v $(pwd)/exports:/exports \
+  --env-file .env \
+  aaronfortg/flowger:latest \
+  sync --bank Imagin --country ES
+```
+
+### Automated Daemon via docker-compose
+
+Copy `docker-compose.yml` from the repository, place your `.env` and `keys/private.pem` alongside it, then run:
+
+```bash
+docker compose up -d
+docker compose logs -f flowger-imagin
+```
+
+To add a second bank, duplicate the service block in `docker-compose.yml` with a different `--bank`, `--country`, and `--cron` schedule. All services share the same `db` volume, so transactions from all banks land in one database. If your services also share the same `/exports` mount, make sure each service writes to a different export file instead of the default `/exports/transactions.csv`, for example by setting a distinct `DEFAULT_EXPORT_FILE` per service (such as `/exports/imagin-transactions.csv` and `/exports/santander-transactions.csv`) or by using `flowger export --output` with a bank-specific path.
+
+---
+
 ## License
 
 MIT

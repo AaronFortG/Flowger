@@ -14,6 +14,8 @@ class BankProvider(Protocol):
         """Exchange redirect code for session and full list of available accounts."""
         pass
 
-    def fetch_transactions(self, session_id: str, account_id: str) -> list[Transaction]:
+    def fetch_transactions(
+        self, session_id: str, account_id: str, bank_name: str, country: str
+    ) -> list[Transaction]:
         """Fetch transactions for a specific account under an authorized session."""
         pass

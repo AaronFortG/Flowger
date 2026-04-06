@@ -6,10 +6,17 @@ from flowger.application.export_transactions import ExportTransactionsUseCase
 from flowger.domain.transaction import Transaction
 
 
-def _make_transaction(tx_id: str = "tx1", account_id: str = "acc1") -> Transaction:
+def _make_transaction(
+    tx_id: str = "tx1",
+    account_id: str = "acc1",
+    bank_name: str = "bank1",
+    country: str = "FI",
+) -> Transaction:
     return Transaction(
         id=tx_id,
         account_id=account_id,
+        bank_name=bank_name,
+        country=country,
         date=date(2026, 4, 1),
         amount=Decimal("-50.00"),
         currency="EUR",
@@ -28,9 +35,9 @@ def test_export_transactions_calls_service() -> None:
         transaction_repository=transaction_repo,
         export_service=export_service,
     )
-    use_case.execute(account_id="acc1", output_path="out.csv")
+    use_case.execute(account_id="acc1", bank_name="bank1", country="FI", output_path="out.csv")
 
-    transaction_repo.get_transactions_for_account.assert_called_once_with("acc1")
+    transaction_repo.get_transactions_for_account.assert_called_once_with("acc1", "bank1", "FI")
     export_service.write_transactions.assert_called_once_with([tx], "out.csv")
 
 
@@ -44,7 +51,7 @@ def test_export_transactions_empty_account() -> None:
         transaction_repository=transaction_repo,
         export_service=export_service,
     )
-    use_case.execute(account_id="acc1", output_path="out.csv")
+    use_case.execute(account_id="acc1", bank_name="bank1", country="FI", output_path="out.csv")
 
     export_service.write_transactions.assert_called_once_with([], "out.csv")
 
@@ -60,9 +67,11 @@ def test_export_transactions_new_only_marks_as_exported() -> None:
         transaction_repository=transaction_repo,
         export_service=export_service,
     )
-    use_case.execute(account_id="acc1", output_path="out.csv", new_only=True)
+    use_case.execute(
+        account_id="acc1", bank_name="bank1", country="FI", output_path="out.csv", new_only=True
+    )
 
-    transaction_repo.get_unexported_transactions.assert_called_once_with("acc1")
+    transaction_repo.get_unexported_transactions.assert_called_once_with("acc1", "bank1", "FI")
     export_service.write_transactions.assert_called_once_with([tx], "out.csv")
     transaction_repo.save_transactions.assert_called_once()
     saved_txs = transaction_repo.save_transactions.call_args[0][0]

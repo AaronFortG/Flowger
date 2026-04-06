@@ -9,6 +9,8 @@ class Transaction(BaseModel):
 
     id: str
     account_id: str
+    bank_name: str
+    country: str
     date: date
     amount: Decimal  # Positive = credit, negative = debit
     currency: str

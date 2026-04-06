@@ -13,6 +13,8 @@ def test_actual_csv_exporter_writes_correct_format(tmp_path: Path) -> None:
         Transaction(
             id="tx1",
             account_id="acc1",
+            bank_name="Test Bank",
+            country="FI",
             date=date(2026, 4, 1),
             amount=Decimal("-50.00"),
             currency="EUR",
@@ -21,6 +23,8 @@ def test_actual_csv_exporter_writes_correct_format(tmp_path: Path) -> None:
         Transaction(
             id="tx2",
             account_id="acc1",
+            bank_name="Test Bank",
+            country="FI",
             date=date(2026, 3, 31),
             amount=Decimal("1000.00"),
             currency="EUR",
@@ -60,6 +64,8 @@ def test_actual_csv_exporter_custom_delimiter(tmp_path: Path) -> None:
         Transaction(
             id="tx1",
             account_id="acc1",
+            bank_name="Test Bank",
+            country="FI",
             date=date(2026, 4, 1),
             amount=Decimal("-50.00"),
             currency="EUR",
@@ -81,6 +87,8 @@ def test_actual_csv_exporter_safe_mode(tmp_path: Path) -> None:
         Transaction(
             id="tx1",
             account_id="acc1",
+            bank_name="Test Bank",
+            country="FI",
             date=date(2026, 4, 1),
             amount=Decimal("-50.00"),
             currency="EUR",
@@ -88,7 +96,7 @@ def test_actual_csv_exporter_safe_mode(tmp_path: Path) -> None:
             notes="Note with 'quotes'",
         ),
     ]
-    
+
     # Test safe mode (default)
     exporter_safe = ActualCsvExporter(safe=True)
     exporter_safe.write_transactions(transactions, str(output_file))

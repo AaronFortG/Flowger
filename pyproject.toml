@@ -12,6 +12,7 @@ dependencies = [
     "httpx>=0.28.1",
     "pyjwt>=2.12.1",
     "cryptography>=46.0.6",
+    "croniter>=6.0.0",
 ]
 
 [project.scripts]
@@ -47,4 +48,5 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "types-pyjwt>=1.7.1",
+    "types-croniter>=6.2.2.20260402",
 ]

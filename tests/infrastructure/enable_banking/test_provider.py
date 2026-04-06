@@ -81,6 +81,8 @@ def test_authorize_session_exchanges_code_for_session_id_and_returns_accounts() 
     assert accounts[0].iban == "ES00000000001"
     assert accounts[0].name == "ImaginBank Checking Account"
     assert accounts[0].currency == "EUR"
+    assert accounts[0].bank_name == "Imagin"
+    assert accounts[0].country == "ES"
 
 
 def test_fetch_transactions_maps_response_to_domain() -> None:
@@ -98,7 +100,9 @@ def test_fetch_transactions_maps_response_to_domain() -> None:
         ]
     }
 
-    transactions = provider.fetch_transactions(session_id="sess-xyz789", account_id="acc-1")
+    transactions = provider.fetch_transactions(
+        session_id="sess-xyz789", account_id="acc-1", bank_name="Imagin", country="ES"
+    )
 
     assert len(transactions) == 1
     tx = transactions[0]
@@ -107,7 +111,8 @@ def test_fetch_transactions_maps_response_to_domain() -> None:
     assert tx.payee == "Supermarket"
     assert tx.notes == "Weekly shop"
     mock_client.get.assert_called_once_with(
-        "/accounts/acc-1/transactions", params={"session_id": "sess-xyz789"}
+        "/accounts/acc-1/transactions",
+        params={"session_id": "sess-xyz789"},
     )
 
 
@@ -126,7 +131,9 @@ def test_fetch_transactions_payee_fallback() -> None:
         ]
     }
 
-    transactions = provider.fetch_transactions(session_id="sess-xyz789", account_id="acc-1")
+    transactions = provider.fetch_transactions(
+        session_id="sess-xyz789", account_id="acc-1", bank_name="Imagin", country="ES"
+    )
 
     assert transactions[0].payee == "Invoice 42"
 
@@ -145,6 +152,8 @@ def test_fetch_transactions_no_payee_fallback() -> None:
         ]
     }
 
-    transactions = provider.fetch_transactions(session_id="sess-xyz789", account_id="acc-1")
+    transactions = provider.fetch_transactions(
+        session_id="sess-xyz789", account_id="acc-1", bank_name="Imagin", country="ES"
+    )
 
     assert transactions[0].payee == "Unknown Payee"

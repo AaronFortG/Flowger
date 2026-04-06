@@ -14,12 +14,16 @@ def export(
     new_only: bool = typer.Option(
         False, "--new-only", help="Export only unexported transactions and mark them as exported"
     ),
+    bank: str | None = typer.Option(None, help="The bank name for scoping"),
+    country: str | None = typer.Option(None, help="The country code for scoping"),
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
     init_db(settings.database_path)
 
     output = output or settings.default_export_file
+    bank = bank or settings.default_bank
+    country = country or settings.default_country
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)
     exporter = ActualCsvExporter(delimiter=delimiter, safe=safe)
@@ -29,9 +33,11 @@ def export(
         export_service=exporter,
     )
 
-    typer.echo(f"Exporting transactions for account {account_id} to {output}...")
+    typer.echo(f"Exporting transactions for account {account_id} ({bank}/{country}) to {output}...")
     use_case.execute(
         account_id=account_id,
+        bank_name=bank,
+        country=country,
         output_path=output,
         new_only=new_only,
     )

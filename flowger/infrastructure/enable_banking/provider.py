@@ -93,12 +93,16 @@ class EnableBankingProvider:
                     iban=str(iban),
                     name=str(full_name),
                     currency=currency,
+                    bank_name=bank_name,
+                    country=country,
                 )
             )
 
         return session, accounts
 
-    def fetch_transactions(self, session_id: str, account_id: str) -> list[Transaction]:
+    def fetch_transactions(
+        self, session_id: str, account_id: str, bank_name: str, country: str
+    ) -> list[Transaction]:
         """Fetch all transactions for an account, following pagination via continuation_key."""
         endpoint = _TRANSACTIONS_ENDPOINT.format(account_id=account_id)
         raw_txs: list[dict[str, Any]] = []
@@ -112,7 +116,7 @@ class EnableBankingProvider:
                 break
             params = {"continuation_key": continuation_key, "session_id": session_id}
 
-        return [_parse_transaction(tx, account_id) for tx in raw_txs]
+        return [_parse_transaction(tx, account_id, bank_name, country) for tx in raw_txs]
 
 
 def _compute_valid_until(days: int = _ACCESS_VALID_DAYS) -> str:
@@ -121,10 +125,14 @@ def _compute_valid_until(days: int = _ACCESS_VALID_DAYS) -> str:
     return until.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _parse_transaction(tx: dict[str, Any], account_id: str) -> Transaction:
+def _parse_transaction(
+    tx: dict[str, Any], account_id: str, bank_name: str, country: str
+) -> Transaction:
     return Transaction(
         id=_resolve_id(tx),
         account_id=account_id,
+        bank_name=bank_name,
+        country=country,
         date=_resolve_date(tx),
         amount=_resolve_amount(tx),
         currency=_resolve_currency(tx),
@@ -182,7 +190,7 @@ def _resolve_currency(tx: dict[str, Any]) -> str:
 def _resolve_payee(tx: dict[str, Any]) -> str:
     """Return the best available payee for a transaction."""
     indicator = str(tx.get("credit_debit_indicator", "")).upper()
-    
+
     # Try to extract a structured remittance string if available
     remittance = tx.get("remittance_information")
     if isinstance(remittance, list):
@@ -192,17 +200,9 @@ def _resolve_payee(tx: dict[str, Any]) -> str:
 
     if indicator == PaymentType.DEBIT.value:
         # It's an expense, so the payee is the creditor
-        return (
-            (tx.get("creditor") or {}).get("name")
-            or remittance_str
-            or "Unknown Payee"
-        )
+        return (tx.get("creditor") or {}).get("name") or remittance_str or "Unknown Payee"
     # It's income, so the payee is the debtor
-    return (
-        (tx.get("debtor") or {}).get("name")
-        or remittance_str
-        or "Unknown Payee"
-    )
+    return (tx.get("debtor") or {}).get("name") or remittance_str or "Unknown Payee"
 
 
 def _resolve_notes(tx: dict[str, Any]) -> str:

@@ -3,6 +3,7 @@ import logging
 from flowger.application.banking import BankProvider
 from flowger.application.repositories import AccountRepository
 from flowger.application.transaction_repository import TransactionRepository
+from flowger.domain.account import Account
 from flowger.domain.exceptions import BankProviderError
 
 logger = logging.getLogger(__name__)
@@ -21,15 +22,21 @@ class SyncTransactionsUseCase:
         self.__account_repository = account_repository
         self.__transaction_repository = transaction_repository
 
-    def execute(self, session_id: str) -> list[tuple[str, str]]:
+    def execute(
+        self, session_id: str, accounts: list[Account] | None = None
+    ) -> list[tuple[str, str]]:
         """Fetch and save transactions for accounts, returning any failures."""
-        accounts = self.__account_repository.get_accounts()
+        if accounts is None:
+            accounts = self.__account_repository.get_accounts()
         failures: list[tuple[str, str]] = []
 
         for account in accounts:
             try:
                 transactions = self.__provider.fetch_transactions(
-                    session_id=session_id, account_id=account.id
+                    session_id=session_id,
+                    account_id=account.id,
+                    bank_name=account.bank_name,
+                    country=account.country,
                 )
                 self.__transaction_repository.save_transactions(transactions)
             except (BankProviderError, ValueError) as e:

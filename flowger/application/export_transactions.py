@@ -15,16 +15,30 @@ class ExportTransactionsUseCase:
         self.__transaction_repository = transaction_repository
         self.__export_service = export_service
 
-    def execute(self, account_id: str, output_path: str, new_only: bool = False) -> None:
+    def execute(
+        self,
+        account_id: str,
+        bank_name: str,
+        country: str,
+        output_path: str,
+        new_only: bool = False,
+    ) -> None:
         """
         Fetch transactions for the given account and export them.
         If new_only is True, fetches unexported transactions and marks them as exported.
         """
         if new_only:
-            transactions = self.__transaction_repository.get_unexported_transactions(account_id)
+            transactions = self.__transaction_repository.get_unexported_transactions(
+                account_id,
+                bank_name,
+                country,
+            )
         else:
-            transactions = self.__transaction_repository.get_transactions_for_account(account_id)
-
+            transactions = self.__transaction_repository.get_transactions_for_account(
+                account_id,
+                bank_name,
+                country,
+            )
 
         self.__export_service.write_transactions(transactions, output_path)
 
