@@ -22,10 +22,11 @@ class ExportTransactionsUseCase:
         country: str,
         output_path: str,
         new_only: bool = False,
-    ) -> None:
+    ) -> int:
         """
         Fetch transactions for the given account and export them.
         If new_only is True, fetches unexported transactions and marks them as exported.
+        Returns the number of transactions exported.
         """
         if new_only:
             transactions = self.__transaction_repository.get_unexported_transactions(
@@ -47,3 +48,5 @@ class ExportTransactionsUseCase:
             for tx in transactions:
                 tx.exported_at = now
             self.__transaction_repository.save_transactions(transactions)
+
+        return len(transactions)

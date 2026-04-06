@@ -34,10 +34,19 @@ def export(
     transaction_repo = SqliteTransactionRepository(settings.database_path)
     exporter = ActualCsvExporter(delimiter=delimiter, safe=safe)
 
-    # Validate that the requested account exists and belongs to the bank/country scope
+    # Validate that the requested account exists somewhere (accounts or transactions table)
     account_repo = SqliteAccountRepository(settings.database_path)
     accounts = account_repo.get_accounts(bank_name=bank, country=country)
-    if not any(acc.id == account_id for acc in accounts):
+    account_exists = any(acc.id == account_id for acc in accounts)
+
+    has_transactions = False
+    if not account_exists:
+        # Fallback: check if transactions exist even if account metadata is missing
+        # This handles cases where the accounts table might be stale or cleared.
+        txs = transaction_repo.get_transactions_for_account(account_id, bank, country)
+        has_transactions = len(txs) > 0
+
+    if not (account_exists or has_transactions):
         typer.secho(
             f"Error: Account ID '{account_id}' not found for {bank} ({country}).\n",
             fg=typer.colors.RED,
@@ -49,7 +58,7 @@ def export(
                 typer.echo(f"  - {a.id} ({a.name} - {a.iban})")
         else:
             typer.echo(
-                "No accounts recorded for this bank/country in the local database.\n"
+                "No records for this bank/country found in the local database.\n"
                 "Please run `flowger setup` first to authorize your accounts."
             )
         raise typer.Exit(1)
@@ -60,7 +69,7 @@ def export(
     )
 
     typer.echo(f"Exporting transactions for account {account_id} ({bank}/{country}) to {output}...")
-    use_case.execute(
+    count = use_case.execute(
         account_id=account_id,
         bank_name=bank,
         country=country,
@@ -68,4 +77,11 @@ def export(
         new_only=new_only,
     )
 
-    typer.secho(f"Export complete. File saved to {output}.", fg=typer.colors.GREEN)
+    if count > 0:
+        typer.secho(
+            f"Export complete. {count} transaction(s) saved to {output}.",
+            fg=typer.colors.GREEN,
+        )
+    else:
+        msg = f"No {'new ' if new_only else ''}transactions found for account {account_id}."
+        typer.secho(msg, fg=typer.colors.YELLOW)
