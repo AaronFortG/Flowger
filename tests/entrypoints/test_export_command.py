@@ -72,8 +72,9 @@ def test_export_fails_fast_on_missing_bank_country(mock_settings: MagicMock) -> 
 
 def test_export_fails_if_account_id_not_found(mock_settings: MagicMock) -> None:
     """Verify export fails when the requested account ID doesn't exist for the bank/country."""
+    account = _make_account()
     mock_ar = MagicMock()
-    mock_ar.get_accounts.return_value = []  # No matching accounts
+    mock_ar.get_accounts.return_value = [account]  # Return one account, but not the one requested
 
     with (
         patch(f"{_MODULE}.get_settings", return_value=mock_settings),
@@ -85,3 +86,6 @@ def test_export_fails_if_account_id_not_found(mock_settings: MagicMock) -> None:
 
     assert result.exit_code == 1
     assert "Error: Account ID 'non-existent' not found" in result.output
+    assert "Available accounts" in result.output
+    assert "acc-123" in result.output
+    assert "Checking" in result.output

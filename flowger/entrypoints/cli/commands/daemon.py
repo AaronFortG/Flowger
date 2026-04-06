@@ -6,7 +6,7 @@ import typer
 from croniter import croniter
 
 from flowger.application.sync_transactions import SyncTransactionsUseCase
-from flowger.entrypoints.cli.helpers import create_bank_provider
+from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
@@ -17,8 +17,8 @@ from flowger.infrastructure.sqlite import (
 
 
 def daemon(
-    bank: str = typer.Option(..., "--bank", help="Bank name to sync"),
-    country: str = typer.Option(..., "--country", help="Country code"),
+    bank: str | None = typer.Option(None, "--bank", help="Bank name to sync (overrides .env)"),
+    country: str | None = typer.Option(None, "--country", help="Country code (overrides .env)"),
     cron: str = typer.Option(
         ..., "--cron", help="Cron expression for scheduling (e.g. '0 3 * * *')"
     ),
@@ -28,6 +28,10 @@ def daemon(
     """
     settings = get_settings()
     init_db(settings.database_path)
+
+    bank, country = validate_bank_country(
+        bank or settings.default_bank, country or settings.default_country
+    )
 
     if not croniter.is_valid(cron):
         typer.secho(f"Error: Invalid cron expression '{cron}'", fg=typer.colors.RED)

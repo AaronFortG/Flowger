@@ -39,11 +39,19 @@ def export(
     accounts = account_repo.get_accounts(bank_name=bank, country=country)
     if not any(acc.id == account_id for acc in accounts):
         typer.secho(
-            f"Error: Account ID '{account_id}' not found for {bank} ({country}).\n"
-            "Please check the ID and ensure you have synchronized your accounts for this bank.",
+            f"Error: Account ID '{account_id}' not found for {bank} ({country}).\n",
             fg=typer.colors.RED,
             err=True,
         )
+        if accounts:
+            typer.echo("Available accounts for this bank/country:")
+            for a in accounts:
+                typer.echo(f"  - {a.id} ({a.name} - {a.iban})")
+        else:
+            typer.echo(
+                "No accounts recorded for this bank/country in the local database.\n"
+                "Please run `flowger setup` first to authorize your accounts."
+            )
         raise typer.Exit(1)
 
     use_case = ExportTransactionsUseCase(
