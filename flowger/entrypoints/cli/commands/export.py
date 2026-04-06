@@ -48,7 +48,6 @@ def export(
         typer.secho(
             f"Error: Account ID '{account_id}' not found for {bank} ({country}).\n",
             fg=typer.colors.RED,
-            err=True,
         )
         if accounts:
             typer.echo("Available accounts for this bank/country:")

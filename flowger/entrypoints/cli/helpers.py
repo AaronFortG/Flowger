@@ -21,7 +21,6 @@ def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, s
             "  DEFAULT_BANK=...\n"
             "  DEFAULT_COUNTRY=...",
             fg=typer.colors.RED,
-            err=True,
         )
         raise typer.Exit(1)
     return bank, country
