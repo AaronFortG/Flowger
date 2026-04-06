@@ -6,7 +6,7 @@ on:
       - "v*.*.*"
 
 env:
-  DOCKERHUB_IMAGE: aaronfortg/flowger
+  DOCKERHUB_IMAGE: aaronfort/flowger
   GHCR_IMAGE: ghcr.io/aaronfortg/flowger
 
 jobs:
