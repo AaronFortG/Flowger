@@ -1,9 +1,14 @@
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
+from flowger.entrypoints.cli.helpers import validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.exporters.csv import ActualCsvExporter
-from flowger.infrastructure.sqlite import SqliteTransactionRepository, init_db
+from flowger.infrastructure.sqlite import (
+    SqliteAccountRepository,
+    SqliteTransactionRepository,
+    init_db,
+)
 
 
 def export(
@@ -22,11 +27,22 @@ def export(
     init_db(settings.database_path)
 
     output = output or settings.default_export_file
-    bank = bank or settings.default_bank
-    country = country or settings.default_country
+    bank, country = validate_bank_country(
+        bank or settings.default_bank, country or settings.default_country
+    )
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)
     exporter = ActualCsvExporter(delimiter=delimiter, safe=safe)
+
+    # Validate that the account exists in the local database
+    account_repo = SqliteAccountRepository(settings.database_path)
+    if not account_repo.get_accounts(bank_name=bank, country=country):
+        typer.secho(
+            f"Error: No accounts found for {bank} ({country}).\n"
+            "This account ID might exist for a different bank or country.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
     use_case = ExportTransactionsUseCase(
         transaction_repository=transaction_repo,

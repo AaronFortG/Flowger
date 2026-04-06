@@ -35,6 +35,16 @@ def daemon(
 
     typer.echo(f"Starting Flowger daemon for {bank} ({country}) with schedule: {cron}")
 
+    # Fail fast if no accounts exist for the given scope
+    account_repo = SqliteAccountRepository(settings.database_path)
+    if not account_repo.get_accounts(bank_name=bank, country=country):
+        typer.secho(
+            f"Error: No accounts found for {bank} ({country}) in the local database.\n"
+            "Please run `flowger setup` first to authorize your accounts.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
     # Seed the iterator once to prevent drift from re-calculating from "now"
     cron_iter = croniter(cron, datetime.now(timezone.utc))
 

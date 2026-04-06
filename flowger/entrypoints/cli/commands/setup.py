@@ -5,7 +5,7 @@ import typer
 from flowger.application.authorize_session import AuthorizeSessionUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.domain.exceptions import BankProviderError
-from flowger.entrypoints.cli.helpers import create_bank_provider
+from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
@@ -28,8 +28,9 @@ def setup(
     settings = get_settings()
     init_db(settings.database_path)
 
-    bank = bank or settings.default_bank
-    country = country or settings.default_country
+    bank, country = validate_bank_country(
+        bank or settings.default_bank, country or settings.default_country
+    )
 
     with create_bank_provider(settings) as provider:
         # Step 1: Generate auth URL (reuses the same provider.start_authorization path as login)

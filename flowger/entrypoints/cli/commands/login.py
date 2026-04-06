@@ -2,7 +2,7 @@ import uuid
 
 import typer
 
-from flowger.entrypoints.cli.helpers import create_bank_provider
+from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import init_db
 
@@ -15,8 +15,9 @@ def login(
     settings = get_settings()
     init_db(settings.database_path)
 
-    bank = bank or settings.default_bank
-    country = country or settings.default_country
+    bank, country = validate_bank_country(
+        bank or settings.default_bank, country or settings.default_country
+    )
 
     with create_bank_provider(settings) as provider:
         typer.echo(f"Requesting authorization for {bank} ({country})...")
