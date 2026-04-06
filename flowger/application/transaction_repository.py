@@ -21,3 +21,7 @@ class TransactionRepository(Protocol):
     ) -> list[Transaction]:
         """Return all transactions for an account that have never been exported."""
         pass
+
+    def has_transactions(self, account_id: str, bank_name: str, country: str) -> bool:
+        """Return True if any transactions exist for the given account."""
+        pass

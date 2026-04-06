@@ -42,9 +42,7 @@ def export(
     has_transactions = False
     if not account_exists:
         # Fallback: check if transactions exist even if account metadata is missing
-        # This handles cases where the accounts table might be stale or cleared.
-        txs = transaction_repo.get_transactions_for_account(account_id, bank, country)
-        has_transactions = len(txs) > 0
+        has_transactions = transaction_repo.has_transactions(account_id, bank, country)
 
     if not (account_exists or has_transactions):
         typer.secho(

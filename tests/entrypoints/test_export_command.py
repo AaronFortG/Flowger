@@ -77,7 +77,7 @@ def test_export_fails_if_account_id_not_found(mock_settings: MagicMock) -> None:
     mock_ar = MagicMock()
     mock_ar.get_accounts.return_value = [account]  # Return one account, but not the one requested
     mock_tr = MagicMock()
-    mock_tr.get_transactions_for_account.return_value = []  # No transactions either
+    mock_tr.has_transactions.return_value = False  # No transactions either
 
     with (
         patch(f"{_MODULE}.get_settings", return_value=mock_settings),
@@ -101,7 +101,7 @@ def test_export_works_with_orphan_transactions(mock_settings: MagicMock) -> None
     mock_ar.get_accounts.return_value = []  # Missing account record
 
     mock_tr = MagicMock()
-    mock_tr.get_transactions_for_account.return_value = [MagicMock()]  # Transactions exist
+    mock_tr.has_transactions.return_value = True  # Transactions exist
 
     mock_use_case = MagicMock()
     mock_use_case.execute.return_value = 1

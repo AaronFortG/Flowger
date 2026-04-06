@@ -32,6 +32,12 @@ _QUERY_GET_UNEXPORTED = """
     ORDER BY date DESC;
 """
 
+_QUERY_HAS_TRANSACTIONS = """
+    SELECT 1 FROM transactions
+    WHERE bank_name = ? AND country = ? AND account_id = ?
+    LIMIT 1;
+"""
+
 
 class SqliteTransactionRepository:
     """Concrete repository persisting Transaction records using SQLite."""
@@ -78,6 +84,14 @@ class SqliteTransactionRepository:
                 _QUERY_GET_UNEXPORTED, (bank_name, country, account_id)
             ).fetchall()
         return self.__map_rows(rows)
+
+    def has_transactions(self, account_id: str, bank_name: str, country: str) -> bool:
+        """Return True if any transactions exist for the given account."""
+        with sqlite3.connect(self.__db_path) as conn:
+            row = conn.execute(
+                _QUERY_HAS_TRANSACTIONS, (bank_name, country, account_id)
+            ).fetchone()
+        return row is not None
 
     def __map_rows(self, rows: list[Any]) -> list[Transaction]:
         from datetime import date, datetime
