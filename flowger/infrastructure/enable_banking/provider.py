@@ -82,23 +82,26 @@ class EnableBankingProvider:
         )
 
         raw_accounts: list[dict[str, Any]] = response.get("accounts", [])
-        aspsp = response.get("aspsp")
-        bank_name_resp = (aspsp if aspsp is not None else {}).get("name", bank_name)
+        bank_service_provider = response.get("aspsp")
+        bank_name_resp = (bank_service_provider if bank_service_provider is not None else {}).get("name", bank_name)
 
         accounts: list[Account] = []
         for acc in raw_accounts:
+            # IBAN is found inside the account_id object in the response
             account_id_obj = acc.get("account_id")
-            iban = acc.get("iban")
-            if iban is None:
-                iban = (account_id_obj if account_id_obj is not None else {}).get("iban", "")
+            iban_val = (account_id_obj if account_id_obj is not None else {}).get("iban")
+            iban = str(iban_val) if (iban_val is not None and len(str(iban_val).strip()) > 0) else ""
 
-            acc_name = acc.get("product")
-            if acc_name is None:
-                acc_name = acc.get("name")
-            if acc_name is None:
-                acc_name = acc.get("details")
-            if acc_name is None:
-                acc_name = "Account"
+            # Name selection: Prefer 'name', then 'details' per the API response example
+            name_candidates = [
+                acc.get("name"),
+                acc.get("details"),
+            ]
+            acc_name = "Account"
+            for cand in name_candidates:
+                if cand is not None and (not isinstance(cand, str) or len(str(cand).strip()) > 0):
+                    acc_name = str(cand)
+                    break
 
             full_name = f"{bank_name_resp} {acc_name}".strip()
             currency = acc.get("currency", "")
@@ -168,7 +171,9 @@ def _resolve_id(tx: dict[str, Any]) -> str:
         
         booking_date = tx.get("booking_date")
         value_date = tx.get("value_date")
-        date_str = str(booking_date if booking_date is not None else (value_date if value_date is not None else ""))
+        booking_date_str = "" if booking_date is None else str(booking_date).strip()
+        value_date_str = "" if value_date is None else str(value_date).strip()
+        date_str = booking_date_str if len(booking_date_str) > 0 else value_date_str
         
         indicator = tx.get("credit_debit_indicator", "")
         remittance_info = tx.get("remittance_information", "")
@@ -183,11 +188,15 @@ def _resolve_date(tx: dict[str, Any]) -> datetime.date:
     booking_date = tx.get("booking_date")
     value_date = tx.get("value_date")
     
-    raw = (
-        transaction_date
-        if transaction_date is not None
-        else (booking_date if booking_date is not None else value_date)
-    )
+    raw = None
+    for candidate in (
+        tx.get("transaction_date"),
+        tx.get("booking_date"),
+        tx.get("value_date"),
+    ):
+        if candidate is not None and (not isinstance(candidate, str) or len(candidate.strip()) > 0):
+            raw = candidate
+            break
     if raw is None:
         raise ValueError(f"Transaction has no parseable date: {tx.get('entry_reference', '?')}")
     return datetime.date.fromisoformat(str(raw)[:10])
@@ -236,8 +245,8 @@ def _resolve_payee(tx: dict[str, Any]) -> str:
         # It's an expense, so the payee is the creditor
         creditor = tx.get("creditor")
         creditor_name = (creditor if creditor is not None else {}).get("name")
-        if creditor_name is not None:
-            return creditor_name
+        if creditor_name is not None and len(str(creditor_name).strip()) > 0:
+            return str(creditor_name)
         if len(remittance_str) > 0:
             return remittance_str
         return "Unknown Payee"
@@ -245,8 +254,8 @@ def _resolve_payee(tx: dict[str, Any]) -> str:
     # It's income, so the payee is the debtor
     debtor = tx.get("debtor")
     debtor_name = (debtor if debtor is not None else {}).get("name")
-    if debtor_name is not None:
-        return debtor_name
+    if debtor_name is not None and len(str(debtor_name).strip()) > 0:
+        return str(debtor_name)
     if len(remittance_str) > 0:
         return remittance_str
     return "Unknown Payee"

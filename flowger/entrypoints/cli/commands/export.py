@@ -24,10 +24,10 @@ def export(
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
-    output = output if output is not None else settings.default_export_file
+    output = output if (output is not None and len(output.strip()) > 0) else settings.default_export_file
     bank, country = validate_bank_country(
-        bank if bank is not None else settings.default_bank,
-        country if country is not None else settings.default_country,
+        bank if (bank is not None and len(bank.strip()) > 0) else settings.default_bank,
+        country if (country is not None and len(country.strip()) > 0) else settings.default_country,
     )
     init_db(settings.database_path)
 

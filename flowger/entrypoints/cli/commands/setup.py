@@ -27,8 +27,8 @@ def setup(
     """
     settings = get_settings()
     bank, country = validate_bank_country(
-        bank if bank is not None else settings.default_bank,
-        country if country is not None else settings.default_country,
+        bank if (bank is not None and len(bank.strip()) > 0) else settings.default_bank,
+        country if (country is not None and len(country.strip()) > 0) else settings.default_country,
     )
     init_db(settings.database_path)
 
