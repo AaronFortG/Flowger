@@ -34,13 +34,15 @@ def export(
     transaction_repo = SqliteTransactionRepository(settings.database_path)
     exporter = ActualCsvExporter(delimiter=delimiter, safe=safe)
 
-    # Validate that the account exists in the local database
+    # Validate that the requested account exists and belongs to the bank/country scope
     account_repo = SqliteAccountRepository(settings.database_path)
-    if not account_repo.get_accounts(bank_name=bank, country=country):
+    accounts = account_repo.get_accounts(bank_name=bank, country=country)
+    if not any(acc.id == account_id for acc in accounts):
         typer.secho(
-            f"Error: No accounts found for {bank} ({country}).\n"
-            "This account ID might exist for a different bank or country.",
+            f"Error: Account ID '{account_id}' not found for {bank} ({country}).\n"
+            "Please check the ID and ensure you have synchronized your accounts for this bank.",
             fg=typer.colors.RED,
+            err=True,
         )
         raise typer.Exit(1)
 
