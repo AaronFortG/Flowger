@@ -22,6 +22,8 @@ def test_sync_transactions_use_case() -> None:
     transaction = Transaction(
         id="tx_1",
         account_id="acc_1",
+        bank_name="Imagin",
+        country="ES",
         date=date(2026, 4, 4),
         amount=Decimal("100.00"),
         currency="EUR",
@@ -40,7 +42,9 @@ def test_sync_transactions_use_case() -> None:
 
     # 3. Assert
     assert failures == []
-    provider.fetch_transactions.assert_called_once_with(session_id="sess_123", account_id="acc_1")
+    provider.fetch_transactions.assert_called_once_with(
+        session_id="sess_123", account_id="acc_1", bank_name="Imagin", country="ES"
+    )
     transaction_repo.save_transactions.assert_called_once_with([transaction])
 
 

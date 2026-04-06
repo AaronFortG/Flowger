@@ -15,6 +15,8 @@ def test_sqlite_transaction_repository_upserts_and_fetches(tmp_path: Path) -> No
     tx1 = Transaction(
         id="t1",
         account_id="acc1",
+        bank_name="bank1",
+        country="FI",
         date=datetime.date(2023, 1, 1),
         amount=Decimal("10.50"),
         currency="EUR",
@@ -25,14 +27,14 @@ def test_sqlite_transaction_repository_upserts_and_fetches(tmp_path: Path) -> No
     # 1. Insert
     repo.save_transactions([tx1])
 
-    fetched = repo.get_transactions_for_account("acc1")
+    fetched = repo.get_transactions_for_account("acc1", "bank1", "FI")
     assert len(fetched) == 1
     assert fetched[0].id == "t1"
     assert fetched[0].amount == Decimal("10.50")
     assert fetched[0].exported_at is None
 
     # 2. Fetch unexported (should find it)
-    unexported = repo.get_unexported_transactions("acc1")
+    unexported = repo.get_unexported_transactions("acc1", "bank1", "FI")
     assert len(unexported) == 1
     assert unexported[0].id == "t1"
 
@@ -43,11 +45,11 @@ def test_sqlite_transaction_repository_upserts_and_fetches(tmp_path: Path) -> No
     repo.save_transactions([tx1])
 
     # 4. Verify unexported is empty now
-    unexported_after = repo.get_unexported_transactions("acc1")
+    unexported_after = repo.get_unexported_transactions("acc1", "bank1", "FI")
     assert len(unexported_after) == 0
 
     # 5. Verify updates persisted correctly
-    fetched_after = repo.get_transactions_for_account("acc1")
+    fetched_after = repo.get_transactions_for_account("acc1", "bank1", "FI")
     assert len(fetched_after) == 1
     assert fetched_after[0].amount == Decimal("20.00")
     assert fetched_after[0].exported_at == export_time

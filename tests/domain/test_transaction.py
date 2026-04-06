@@ -12,6 +12,8 @@ def test_create_transaction_success() -> None:
     txn = Transaction(
         id="txn_456",
         account_id="acc_123",
+        bank_name="Test Bank",
+        country="FI",
         amount=Decimal("-45.50"),
         currency="EUR",
         date=date(2026, 4, 4),
