@@ -96,7 +96,7 @@ def test_export_fails_if_account_id_not_found(mock_settings: MagicMock) -> None:
 
 
 def test_export_works_with_orphan_transactions(mock_settings: MagicMock) -> None:
-    """Verify export works if accounts table is empty but transactions exist (Copilot edge case)."""
+    """Verify export works when no account record exists but transactions are present."""
     mock_ar = MagicMock()
     mock_ar.get_accounts.return_value = []  # Missing account record
 
