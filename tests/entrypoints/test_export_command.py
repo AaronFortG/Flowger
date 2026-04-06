@@ -118,3 +118,49 @@ def test_export_works_with_orphan_transactions(mock_settings: MagicMock) -> None
 
     assert result.exit_code == 0
     assert "Export complete. 1 transaction(s) saved" in result.output
+
+
+def test_export_no_transactions_found(mock_settings: MagicMock) -> None:
+    """Verify export prints a yellow message when no transactions are found."""
+    account = _make_account()
+    mock_ar = MagicMock()
+    mock_ar.get_accounts.return_value = [account]
+    mock_tr = MagicMock()
+    mock_use_case = MagicMock()
+    mock_use_case.execute.return_value = 0  # No transactions exported
+
+    with (
+        patch(f"{_MODULE}.get_settings", return_value=mock_settings),
+        patch(f"{_MODULE}.init_db"),
+        patch(f"{_MODULE}.SqliteAccountRepository", return_value=mock_ar),
+        patch(f"{_MODULE}.SqliteTransactionRepository", return_value=mock_tr),
+        patch(f"{_MODULE}.ExportTransactionsUseCase", return_value=mock_use_case),
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["export", "--account-id", "acc-123"])
+
+    assert result.exit_code == 0
+    assert "No transactions found for account acc-123" in result.output
+
+
+def test_export_no_new_transactions_found(mock_settings: MagicMock) -> None:
+    """Verify export prints a yellow message with 'new' qualifier when --new-only is used."""
+    account = _make_account()
+    mock_ar = MagicMock()
+    mock_ar.get_accounts.return_value = [account]
+    mock_tr = MagicMock()
+    mock_use_case = MagicMock()
+    mock_use_case.execute.return_value = 0  # No new transactions exported
+
+    with (
+        patch(f"{_MODULE}.get_settings", return_value=mock_settings),
+        patch(f"{_MODULE}.init_db"),
+        patch(f"{_MODULE}.SqliteAccountRepository", return_value=mock_ar),
+        patch(f"{_MODULE}.SqliteTransactionRepository", return_value=mock_tr),
+        patch(f"{_MODULE}.ExportTransactionsUseCase", return_value=mock_use_case),
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["export", "--account-id", "acc-123", "--new-only"])
+
+    assert result.exit_code == 0
+    assert "No new transactions found for account acc-123" in result.output
