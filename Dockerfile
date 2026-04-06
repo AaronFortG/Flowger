@@ -12,12 +12,13 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
 
 # 1. Copy ONLY manifests (dependencies) for layer caching
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock ./
 
 # 2. Install dependencies (Cached unless uv.lock/pyproject.toml changes)
 RUN uv sync --frozen --no-dev --no-install-project
 
-# 3. Copy application source
+# 3. Copy application source and README (needed for metadata validation)
+COPY README.md ./
 COPY flowger/ ./flowger/
 
 # 4. Final install (Fast, only installs the local package)
