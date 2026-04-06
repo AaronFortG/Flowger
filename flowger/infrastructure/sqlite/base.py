@@ -49,3 +49,15 @@ def init_db(db_path: str) -> None:
             conn.execute("ALTER TABLE accounts ADD COLUMN bank_name TEXT NOT NULL DEFAULT ''")
         if "country" not in columns:
             conn.execute("ALTER TABLE accounts ADD COLUMN country TEXT NOT NULL DEFAULT ''")
+
+        # Legacy check: if rows exist but bank_name is empty, warn the user.
+        res = conn.execute("SELECT COUNT(*) FROM accounts WHERE bank_name = ''").fetchone()
+        if res and res[0] > 0:
+            import sys
+            print(
+                f"\n[WARNING] Found {res[0]} legacy accounts with missing "
+                "bank info in the database.\n"
+                "Please run 'flowger setup' for each bank to re-authorize "
+                "and correctly scope these accounts.\n",
+                file=sys.stderr
+            )

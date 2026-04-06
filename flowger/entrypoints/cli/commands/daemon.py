@@ -74,6 +74,14 @@ def _run_sync(bank: str, country: str, settings: Any) -> bool:
     # Use bank/country filtering for accounts
     accounts = account_repo.get_accounts(bank_name=bank, country=country)
 
+    if not accounts:
+        typer.secho(
+            f"No accounts found for {bank} ({country}). "
+            "Sync aborted to avoid a no-op run.",
+            fg=typer.colors.RED,
+        )
+        return False
+
     with create_bank_provider(settings) as provider:
         use_case = SyncTransactionsUseCase(
             provider=provider,
@@ -81,8 +89,8 @@ def _run_sync(bank: str, country: str, settings: Any) -> bool:
             transaction_repository=transaction_repo,
         )
         failures = use_case.execute(session_id=session.session_id, accounts=accounts)
-
-        typer.secho(f"Sync completed with {len(failures)} failures.", fg=typer.colors.YELLOW)
-        return False
+        if failures:
+            typer.secho(f"Sync completed with {len(failures)} failures.", fg=typer.colors.YELLOW)
+            return False
 
     return True

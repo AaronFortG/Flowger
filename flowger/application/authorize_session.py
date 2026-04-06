@@ -18,7 +18,9 @@ class AuthorizeSessionUseCase:
         self.__session_repository = session_repository
         self.__account_repository = account_repository
 
-    def execute(self, code: str, bank_name: str, country: str) -> tuple[BankSession, list[Account]]:
+    def execute(
+        self, code: str, bank_name: str, country: str
+    ) -> tuple[BankSession, list[Account]]:
         """
         Exchange the redirect code for a session, persist it alongside the accounts,
         and return both so callers can display or further use them.
