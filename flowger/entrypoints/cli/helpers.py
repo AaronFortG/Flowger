@@ -13,8 +13,12 @@ def create_bank_provider(settings: Settings) -> EnableBankingProvider:
 
 
 def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, str]:
-    """Ensure bank and country are specified, otherwise exit with error."""
-    if not bank or not country:
+    """Ensure bank and country are specified and normalized, otherwise exit with error."""
+    # Normalize inputs (strip whitespace and handle None)
+    normalized_bank = (bank or "").strip()
+    normalized_country = (country or "").strip()
+
+    if not normalized_bank or not normalized_country:
         typer.secho(
             "\nError: Bank and Country must be specified.\n\n"
             "Use --bank and --country options, or set them in your .env file as:\n"
@@ -23,4 +27,4 @@ def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, s
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
-    return bank, country
+    return normalized_bank, normalized_country
