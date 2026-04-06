@@ -236,7 +236,7 @@ Transactions are sorted oldest-first. Amounts follow the sign convention: **posi
 Pre-built images are published to both Docker Hub and GitHub Container Registry on every release:
 
 ```bash
-docker pull aaronfortg/flowger:latest
+docker pull aaronfort/flowger:latest
 # or
 docker pull ghcr.io/aaronfortg/flowger:latest
 ```
@@ -251,7 +251,7 @@ docker run --rm \
   -v $(pwd)/keys/private.pem:/keys/private.pem:ro \
   -v $(pwd)/exports:/exports \
   --env-file .env \
-  aaronfortg/flowger:latest \
+  aaronfort/flowger:latest \
   sync --bank Imagin --country ES
 ```
 
