@@ -11,15 +11,17 @@ WORKDIR /app
 # Enable bytecode compilation for slightly faster startup
 ENV UV_COMPILE_BYTECODE=1
 
-# Copy dependency manifests first for layer caching
+# 1. Copy ONLY manifests (dependencies) for layer caching
 COPY pyproject.toml uv.lock ./
 
-# Install only production dependencies, without the local project yet
+# 2. Install dependencies (Cached unless uv.lock/pyproject.toml changes)
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Copy application source and install the project non-editably
+# 3. Copy application source and README (needed for metadata validation)
+COPY README.md ./
 COPY flowger/ ./flowger/
-COPY pyproject.toml ./
+
+# 4. Final install (Fast, only installs the local package)
 RUN uv sync --frozen --no-dev --no-editable
 
 # ─── Stage 2: runtime ─────────────────────────────────────────────────────────
