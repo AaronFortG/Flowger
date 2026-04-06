@@ -89,9 +89,19 @@ class EnableBankingProvider:
 
         accounts: list[Account] = []
         for acc in raw_accounts:
-            # IBAN is found inside the account_id object in the response
+            # IBAN is found inside the account_id object, but is optional
+            # If IBAN is missing, we fall back to 'other' -> 'identification'
             account_id_obj = acc.get("account_id")
-            iban_val = (account_id_obj if account_id_obj is not None else {}).get("iban")
+            if account_id_obj is None:
+                account_id_obj = {}
+            
+            iban_val = account_id_obj.get("iban")
+            if iban_val is None or (isinstance(iban_val, str) and len(iban_val.strip()) == 0):
+                other_obj = account_id_obj.get("other")
+                if other_obj is None:
+                    other_obj = {}
+                iban_val = other_obj.get("identification")
+
             iban = str(iban_val) if (iban_val is not None and len(str(iban_val).strip()) > 0) else ""
 
             # Name selection: Prefer 'name', then 'details' per the API response example

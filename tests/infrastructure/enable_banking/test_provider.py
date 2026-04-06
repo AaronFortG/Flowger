@@ -85,6 +85,83 @@ def test_authorize_session_exchanges_code_for_session_id_and_returns_accounts() 
     assert accounts[0].country == "ES"
 
 
+def test_authorize_session_account_name_fallbacks() -> None:
+    """Verify that account extraction falls back to 'details' when 'name' is missing/empty."""
+    provider, mock_client = _make_provider()
+    mock_client.post.return_value = {
+        "session_id": "sess-fallback",
+        "accounts": [
+            {
+                "uid": "acc-details",
+                "account_id": {"iban": "ES00000000002"},
+                "name": " ",  # Empty string after stripping
+                "details": "Checking Backup",
+                "currency": "EUR",
+            }
+        ],
+        "aspsp": {"name": "ImaginBank"},
+    }
+
+    _, accounts = provider.authorize_session(
+        code="code-2", bank_name="Imagin", country="ES"
+    )
+
+    assert len(accounts) == 1
+    # Should fall back to "details" because "name" is blank
+    assert accounts[0].name == "ImaginBank Checking Backup"
+
+
+def test_authorize_session_nested_iban_extraction() -> None:
+    """Verify that IBAN is correctly extracted from the nested account_id object."""
+    provider, mock_client = _make_provider()
+    mock_client.post.return_value = {
+        "session_id": "sess-iban",
+        "accounts": [
+            {
+                "uid": "acc-iban",
+                "account_id": {"iban": "ES1234567890"},
+                "name": "IBAN Account",
+                "currency": "EUR",
+            }
+        ],
+        "aspsp": {"name": "TestBank"},
+    }
+
+    _, accounts = provider.authorize_session(
+        code="code-3", bank_name="TestBank", country="ES"
+    )
+
+    assert len(accounts) == 1
+    assert accounts[0].iban == "ES1234567890"
+
+
+def test_authorize_session_other_identification_fallback() -> None:
+    """Verify that extraction falls back to 'other.identification' when IBAN is missing."""
+    provider, mock_client = _make_provider()
+    mock_client.post.return_value = {
+        "session_id": "sess-other",
+        "accounts": [
+            {
+                "uid": "acc-other",
+                "account_id": {
+                    "iban": None,
+                    "other": {"identification": "BBAN-12345", "scheme_name": "BBAN"},
+                },
+                "name": "Other Account",
+                "currency": "EUR",
+            }
+        ],
+        "aspsp": {"name": "TestBank"},
+    }
+
+    _, accounts = provider.authorize_session(
+        code="code-4", bank_name="TestBank", country="ES"
+    )
+
+    assert len(accounts) == 1
+    assert accounts[0].iban == "BBAN-12345"
+
+
 def test_fetch_transactions_maps_response_to_domain() -> None:
     provider, mock_client = _make_provider()
     mock_client.get.return_value = {
