@@ -23,6 +23,7 @@ def test_login_happy_path(mock_settings: MagicMock) -> None:
     """Verify login prints the authorization URL."""
     mock_provider = MagicMock()
     mock_provider.__enter__ = Mock(return_value=mock_provider)
+    mock_provider.__exit__ = Mock(return_value=False)
     mock_provider.start_authorization.return_value = "https://magic-url"
 
     with (

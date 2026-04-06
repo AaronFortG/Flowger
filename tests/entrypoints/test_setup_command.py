@@ -122,6 +122,7 @@ def test_setup_exit_on_empty_code(mock_settings: MagicMock) -> None:
     """Verify that entering an empty code exits the setup process."""
     mock_provider = MagicMock()
     mock_provider.__enter__ = Mock(return_value=mock_provider)
+    mock_provider.__exit__ = Mock(return_value=False)
 
     with (
         patch(f"{_MODULE}.get_settings", return_value=mock_settings),
@@ -143,6 +144,7 @@ def test_setup_retry_flow_success(mock_settings: MagicMock) -> None:
     mock_provider, mock_sr, mock_ar, mock_tr = _build_mocks(accounts, session)
 
     # Fail once, then succeed
+    mock_provider.__exit__ = Mock(return_value=False)
     mock_provider.authorize_session.side_effect = [
         BankProviderError("Expired code"),
         (session, accounts),
@@ -170,6 +172,7 @@ def test_setup_retry_flow_decline(mock_settings: MagicMock) -> None:
     """Verify setup exits if authorization fails and the user declines to retry."""
     mock_provider = MagicMock()
     mock_provider.__enter__ = Mock(return_value=mock_provider)
+    mock_provider.__exit__ = Mock(return_value=False)
     mock_provider.start_authorization.return_value = "http://auth"
     mock_provider.authorize_session.side_effect = BankProviderError("Bad code")
 

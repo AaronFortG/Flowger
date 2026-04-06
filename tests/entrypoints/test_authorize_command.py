@@ -36,6 +36,7 @@ def test_authorize_happy_path(mock_settings: MagicMock) -> None:
     mock_ar = MagicMock()
     mock_provider = MagicMock()
     mock_provider.__enter__ = Mock(return_value=mock_provider)
+    mock_provider.__exit__ = Mock(return_value=False)
     mock_use_case = MagicMock()
     mock_use_case.execute.return_value = (session, [])
 

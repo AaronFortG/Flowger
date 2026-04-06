@@ -21,7 +21,7 @@ def mock_settings(tmp_path: Path) -> MagicMock:
 def test_daemon_fails_fast_on_missing_accounts(mock_settings: MagicMock) -> None:
     """Verify daemon fails fast if no accounts exist for the specified bank/country."""
     mock_ar = MagicMock()
-    mock_ar.get_accounts.return_value = [] # No accounts
+    mock_ar.get_accounts.return_value = []  # No accounts
 
     with (
         patch(f"{_MODULE}.get_settings", return_value=mock_settings),
@@ -49,7 +49,7 @@ def test_daemon_fails_on_missing_options(mock_settings: MagicMock) -> None:
         patch(f"{_MODULE}.init_db"),
     ):
         runner = CliRunner()
-        result = runner.invoke(app, ["daemon"]) # Missing options
+        result = runner.invoke(app, ["daemon"])  # Missing options
 
     # Typer's error message for missing mandatory option
     assert result.exit_code != 0

@@ -53,8 +53,9 @@ def test_sync_happy_path(mock_settings: MagicMock) -> None:
     mock_tr = MagicMock()
     mock_provider = MagicMock()
     mock_provider.__enter__ = Mock(return_value=mock_provider)
+    mock_provider.__exit__ = Mock(return_value=False)
     mock_use_case = MagicMock()
-    mock_use_case.execute.return_value = [] # No failures
+    mock_use_case.execute.return_value = []  # No failures
 
     with (
         patch(f"{_MODULE}.get_settings", return_value=mock_settings),
@@ -112,7 +113,7 @@ def test_sync_fails_if_no_accounts(mock_settings: MagicMock) -> None:
     mock_sr = MagicMock()
     mock_sr.get_latest_session.return_value = session
     mock_ar = MagicMock()
-    mock_ar.get_accounts.return_value = [] # No accounts
+    mock_ar.get_accounts.return_value = []  # No accounts
 
     with (
         patch(f"{_MODULE}.get_settings", return_value=mock_settings),
