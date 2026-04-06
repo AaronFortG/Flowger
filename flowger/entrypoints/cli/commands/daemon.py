@@ -35,16 +35,19 @@ def daemon(
 
     typer.echo(f"Starting Flowger daemon for {bank} ({country}) with schedule: {cron}")
 
+    # Seed the iterator once to prevent drift from re-calculating from "now"
+    cron_iter = croniter(cron, datetime.now(timezone.utc))
+
     while True:
         try:
-            now = datetime.now(timezone.utc)
-            cron_iter = croniter(cron, now)
             next_run = cron_iter.get_next(datetime)
+            now = datetime.now(timezone.utc)
             sleep_seconds = (next_run - now).total_seconds()
 
             if sleep_seconds > 0:
                 typer.echo(
-                    f"Next sync scheduled: {next_run.isoformat()} (sleeping {int(sleep_seconds)}s)"
+                    f"Next sync scheduled: {next_run.isoformat()} "
+                    f"(sleeping {int(sleep_seconds)}s)"
                 )
                 time.sleep(sleep_seconds)
 
@@ -59,6 +62,9 @@ def daemon(
             typer.secho(f"\nDaemon error: {e}", fg=typer.colors.RED)
             typer.echo("Retrying in 60 seconds...")
             time.sleep(60)
+            # Re-seed from now after an error to ensure we don't try to "catch up"
+            # on multiple missed runs if the error persists for a long time.
+            cron_iter = croniter(cron, datetime.now(timezone.utc))
 
 
 def _run_sync(bank: str, country: str, settings: Any) -> bool:

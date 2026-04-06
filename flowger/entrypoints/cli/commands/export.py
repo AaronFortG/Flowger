@@ -14,8 +14,8 @@ def export(
     new_only: bool = typer.Option(
         False, "--new-only", help="Export only unexported transactions and mark them as exported"
     ),
-    bank: str = typer.Option(None, help="The bank name for scoping"),
-    country: str = typer.Option(None, help="The country code for scoping"),
+    bank: str | None = typer.Option(None, help="The bank name for scoping"),
+    country: str | None = typer.Option(None, help="The country code for scoping"),
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()

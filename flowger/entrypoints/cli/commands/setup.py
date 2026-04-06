@@ -90,15 +90,21 @@ def setup(
 
         # Step 5: Print account summary
         typer.echo("\nYour authorized accounts:\n")
-        typer.echo(f"{'ID':<40} {'IBAN':<26} {'Name':<20} Currency")
-        typer.echo("-" * 96)
+        typer.echo(
+            f"{'Bank':<15} {'Country':<8} {'ID':<40} {'IBAN':<26} {'Name':<20} Currency"
+        )
+        typer.echo("-" * 120)
         for acc in accounts:
-            typer.echo(f"{acc.id:<40} {acc.iban:<26} {acc.name:<20} {acc.currency}")
+            typer.echo(
+                f"{acc.bank_name:<15} {acc.country:<8} {acc.id:<40} "
+                f"{acc.iban:<26} {acc.name:<20} {acc.currency}"
+            )
 
         typer.echo(
-            "\nSetup complete! Use the account IDs above with "
-            "`flowger export --account-id <ID>` to export transactions.\n"
-            "If running via Docker, start the services with `docker compose up -d`."
+            f"\nSetup complete! Use the account IDs above with:\n"
+            f"  `flowger export --account-id <ID> --bank {bank} --country {country}`\n"
+            f"to export transactions. If running via Docker, start the "
+            f"services with `docker compose up -d`."
         )
 
         if failures:

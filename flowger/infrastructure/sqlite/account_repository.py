@@ -40,11 +40,23 @@ class SqliteAccountRepository:
         self, bank_name: str | None = None, country: str | None = None
     ) -> list[Account]:
         """Retrieve stored accounts, optionally filtered by bank and country."""
+        base_query = "SELECT id, iban, name, currency, bank_name, country FROM accounts"
+        where_clauses = []
+        params = []
+
+        if bank_name is not None:
+            where_clauses.append("bank_name = ?")
+            params.append(bank_name)
+        if country is not None:
+            where_clauses.append("country = ?")
+            params.append(country)
+
+        query = base_query
+        if where_clauses:
+            query += " WHERE " + " AND ".join(where_clauses)
+
         with sqlite3.connect(self.__db_path) as conn:
-            if bank_name is not None and country is not None:
-                rows = conn.execute(_QUERY_GET_FILTERED, (bank_name, country)).fetchall()
-            else:
-                rows = conn.execute(_QUERY_GET_ALL).fetchall()
+            rows = conn.execute(query, params).fetchall()
 
         return [
             Account(
