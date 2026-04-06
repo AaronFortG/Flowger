@@ -25,9 +25,13 @@ class EnableBankingProvider:
         private_key_path: str,
         client: EnableBankingClient | None = None,
     ) -> None:
-        self.__client = client or EnableBankingClient(
-            app_id=app_id,
-            private_key_path=private_key_path,
+        self.__client = (
+            client
+            if client is not None
+            else EnableBankingClient(
+                app_id=app_id,
+                private_key_path=private_key_path,
+            )
         )
 
     def __enter__(self) -> "EnableBankingProvider":
@@ -54,7 +58,7 @@ class EnableBankingProvider:
             "state": state,
             "redirect_url": redirect_url,
         }
-        if psu_type:
+        if len(psu_type) > 0:
             payload["psu_type"] = psu_type
         response = self.__client.post(_AUTH_ENDPOINT, json=payload)
         url: str = response.get("url", "")
@@ -78,12 +82,24 @@ class EnableBankingProvider:
         )
 
         raw_accounts: list[dict[str, Any]] = response.get("accounts", [])
-        bank_name_resp = (response.get("aspsp") or {}).get("name", bank_name)
+        aspsp = response.get("aspsp")
+        bank_name_resp = (aspsp if aspsp is not None else {}).get("name", bank_name)
 
         accounts: list[Account] = []
         for acc in raw_accounts:
-            iban = acc.get("iban") or (acc.get("account_id") or {}).get("iban", "")
-            acc_name = acc.get("product") or acc.get("name") or acc.get("details") or "Account"
+            account_id_obj = acc.get("account_id")
+            iban = acc.get("iban")
+            if iban is None:
+                iban = (account_id_obj if account_id_obj is not None else {}).get("iban", "")
+
+            acc_name = acc.get("product")
+            if acc_name is None:
+                acc_name = acc.get("name")
+            if acc_name is None:
+                acc_name = acc.get("details")
+            if acc_name is None:
+                acc_name = "Account"
+
             full_name = f"{bank_name_resp} {acc_name}".strip()
             currency = acc.get("currency", "")
 
@@ -112,7 +128,7 @@ class EnableBankingProvider:
             response = self.__client.get(endpoint, params=params)
             raw_txs.extend(response.get("transactions", []))
             continuation_key = response.get("continuation_key")
-            if not continuation_key:
+            if continuation_key is None or len(continuation_key) == 0:
                 break
             params = {"continuation_key": continuation_key, "session_id": session_id}
 
@@ -144,10 +160,16 @@ def _parse_transaction(
 def _resolve_id(tx: dict[str, Any]) -> str:
     """Return the unique identifier for a transaction."""
     tx_id = tx.get("entry_reference")
-    if not tx_id:
-        amount_obj = tx.get("transaction_amount") or {}
+    if tx_id is None or len(str(tx_id)) == 0:
+        amount_obj = tx.get("transaction_amount")
+        if amount_obj is None:
+            amount_obj = {}
         amount_str = str(amount_obj.get("amount", ""))
-        date_str = str(tx.get("booking_date") or tx.get("value_date") or "")
+        
+        booking_date = tx.get("booking_date")
+        value_date = tx.get("value_date")
+        date_str = str(booking_date if booking_date is not None else (value_date if value_date is not None else ""))
+        
         indicator = tx.get("credit_debit_indicator", "")
         remittance_info = tx.get("remittance_information", "")
         raw_str = f"{date_str}_{amount_str}_{indicator}_{remittance_info}"
@@ -157,8 +179,16 @@ def _resolve_id(tx: dict[str, Any]) -> str:
 
 def _resolve_date(tx: dict[str, Any]) -> datetime.date:
     """Return the best available date — transaction_date > booking_date > value_date."""
-    raw = tx.get("transaction_date") or tx.get("booking_date") or tx.get("value_date")
-    if not raw:
+    transaction_date = tx.get("transaction_date")
+    booking_date = tx.get("booking_date")
+    value_date = tx.get("value_date")
+    
+    raw = (
+        transaction_date
+        if transaction_date is not None
+        else (booking_date if booking_date is not None else value_date)
+    )
+    if raw is None:
         raise ValueError(f"Transaction has no parseable date: {tx.get('entry_reference', '?')}")
     return datetime.date.fromisoformat(str(raw)[:10])
 
@@ -166,8 +196,10 @@ def _resolve_date(tx: dict[str, Any]) -> datetime.date:
 def _resolve_amount(tx: dict[str, Any]) -> Decimal:
     """Return the signed amount based on the credit/debit indicator."""
     indicator = str(tx.get("credit_debit_indicator", "")).upper()
-
-    amount_obj = tx.get("transaction_amount") or {}
+ 
+    amount_obj = tx.get("transaction_amount")
+    if amount_obj is None:
+        amount_obj = {}
     raw_amount = amount_obj.get("amount", "0")
     amount = Decimal(str(raw_amount))
 
@@ -183,7 +215,9 @@ def _resolve_amount(tx: dict[str, Any]) -> Decimal:
 
 
 def _resolve_currency(tx: dict[str, Any]) -> str:
-    amount_obj = tx.get("transaction_amount") or {}
+    amount_obj = tx.get("transaction_amount")
+    if amount_obj is None:
+        amount_obj = {}
     return str(amount_obj.get("currency", ""))
 
 
@@ -196,13 +230,26 @@ def _resolve_payee(tx: dict[str, Any]) -> str:
     if isinstance(remittance, list):
         remittance_str = " ".join(remittance)
     else:
-        remittance_str = str(remittance) if remittance else ""
+        remittance_str = str(remittance) if remittance is not None else ""
 
     if indicator == PaymentType.DEBIT.value:
         # It's an expense, so the payee is the creditor
-        return (tx.get("creditor") or {}).get("name") or remittance_str or "Unknown Payee"
+        creditor = tx.get("creditor")
+        creditor_name = (creditor if creditor is not None else {}).get("name")
+        if creditor_name is not None:
+            return creditor_name
+        if len(remittance_str) > 0:
+            return remittance_str
+        return "Unknown Payee"
+        
     # It's income, so the payee is the debtor
-    return (tx.get("debtor") or {}).get("name") or remittance_str or "Unknown Payee"
+    debtor = tx.get("debtor")
+    debtor_name = (debtor if debtor is not None else {}).get("name")
+    if debtor_name is not None:
+        return debtor_name
+    if len(remittance_str) > 0:
+        return remittance_str
+    return "Unknown Payee"
 
 
 def _resolve_notes(tx: dict[str, Any]) -> str:
@@ -210,4 +257,4 @@ def _resolve_notes(tx: dict[str, Any]) -> str:
     remittance = tx.get("remittance_information")
     if isinstance(remittance, list):
         return " ".join(remittance)
-    return str(remittance) if remittance else ""
+    return str(remittance) if remittance is not None else ""

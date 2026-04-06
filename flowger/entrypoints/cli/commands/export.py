@@ -24,9 +24,10 @@ def export(
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
-    output = output or settings.default_export_file
+    output = output if output is not None else settings.default_export_file
     bank, country = validate_bank_country(
-        bank or settings.default_bank, country or settings.default_country
+        bank if bank is not None else settings.default_bank,
+        country if country is not None else settings.default_country,
     )
     init_db(settings.database_path)
 
@@ -39,16 +40,16 @@ def export(
     account_exists = any(acc.id == account_id for acc in accounts)
 
     has_transactions = False
-    if not account_exists:
+    if account_exists is False:
         # Fallback: check if transactions exist even if account metadata is missing
         has_transactions = transaction_repo.has_transactions(account_id, bank, country)
 
-    if not (account_exists or has_transactions):
+    if (account_exists is False and has_transactions is False):
         typer.secho(
             f"Error: Account ID '{account_id}' not found for {bank} ({country}).\n",
             fg=typer.colors.RED,
         )
-        if accounts:
+        if len(accounts) > 0:
             typer.echo("Available accounts for this bank/country:")
             for a in accounts:
                 typer.echo(f"  - {a.id} ({a.name} - {a.iban})")
@@ -79,5 +80,5 @@ def export(
             fg=typer.colors.GREEN,
         )
     else:
-        msg = f"No {'new ' if new_only else ''}transactions found for account {account_id}."
+        msg = f"No {'new ' if new_only is True else ''}transactions found for account {account_id}."
         typer.secho(msg, fg=typer.colors.YELLOW)
