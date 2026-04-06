@@ -13,13 +13,6 @@ _QUERY_SAVE = """
         country=excluded.country;
 """
 
-_QUERY_GET_ALL = "SELECT id, iban, name, currency, bank_name, country FROM accounts;"
-_QUERY_GET_FILTERED = """
-    SELECT id, iban, name, currency, bank_name, country
-    FROM accounts
-    WHERE bank_name = ? AND country = ?;
-"""
-
 
 class SqliteAccountRepository:
     """Concrete repository implementing Account persistence using SQLite."""
