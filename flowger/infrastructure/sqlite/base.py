@@ -2,12 +2,13 @@ import sqlite3
 
 _SCHEMA_ACCOUNTS = """
 CREATE TABLE IF NOT EXISTS accounts (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL,
     iban TEXT NOT NULL,
     name TEXT NOT NULL,
     currency TEXT NOT NULL,
     bank_name TEXT NOT NULL,
-    country TEXT NOT NULL
+    country TEXT NOT NULL,
+    PRIMARY KEY (bank_name, country, id)
 );
 """
 

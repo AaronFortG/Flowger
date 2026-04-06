@@ -5,7 +5,7 @@ from flowger.domain.account import Account
 _QUERY_SAVE = """
     INSERT INTO accounts (id, iban, name, currency, bank_name, country)
     VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
+    ON CONFLICT(bank_name, country, id) DO UPDATE SET
         iban=excluded.iban,
         name=excluded.name,
         currency=excluded.currency,

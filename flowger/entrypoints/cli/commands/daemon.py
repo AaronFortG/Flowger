@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import typer
-from croniter import croniter  # type: ignore
+from croniter import croniter
 
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.entrypoints.cli.helpers import create_bank_provider
@@ -28,6 +28,10 @@ def daemon(
     """
     settings = get_settings()
     init_db(settings.database_path)
+
+    if not croniter.is_valid(cron):
+        typer.secho(f"Error: Invalid cron expression '{cron}'", fg=typer.colors.RED)
+        raise typer.Exit(1)
 
     typer.echo(f"Starting Flowger daemon for {bank} ({country}) with schedule: {cron}")
 
