@@ -15,7 +15,13 @@ def accounts(
     stored = account_repo.get_accounts(bank_name=bank, country=country)
 
     if not stored:
-        scope_str = f" for {bank} ({country})" if bank and country else ""
+        parts = []
+        if bank:
+            parts.append(bank)
+        if country:
+            parts.append(f"({country})" if bank else country)
+        scope_str = f" for {' '.join(parts)}" if parts else ""
+
         typer.echo(f"No accounts found{scope_str}. Run `flowger setup` first.")
         raise typer.Exit(0)
 

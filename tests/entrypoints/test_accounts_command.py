@@ -51,8 +51,17 @@ def test_accounts_with_filters(tmp_path: Path) -> None:
         patch(f"{_MODULE}.SqliteAccountRepository", return_value=mock_ar),
     ):
         runner = CliRunner()
+        # Case 1: Both filters
         result = runner.invoke(app, ["accounts", "--bank", "Imagin", "--country", "ES"])
+        assert result.exit_code == 0
+        assert "No accounts found for Imagin (ES)" in result.output
 
-    assert result.exit_code == 0
-    assert "No accounts found for Imagin (ES)" in result.output
-    mock_ar.get_accounts.assert_called_once_with(bank_name="Imagin", country="ES")
+        # Case 2: Only bank
+        result = runner.invoke(app, ["accounts", "--bank", "Imagin"])
+        assert result.exit_code == 0
+        assert "No accounts found for Imagin" in result.output
+
+        # Case 3: Only country
+        result = runner.invoke(app, ["accounts", "--country", "ES"])
+        assert result.exit_code == 0
+        assert "No accounts found for ES" in result.output

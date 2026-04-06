@@ -38,9 +38,7 @@ def test_daemon_fails_fast_on_missing_accounts(mock_settings: MagicMock) -> None
 
 
 def test_daemon_fails_on_missing_options(mock_settings: MagicMock) -> None:
-    """Verify daemon fails when bank and country are missing (they are required for daemon)."""
-    # Note: Typer enforces --bank and --country as mandatory via '...' in Option
-    # but let's see how it behaves when they are not passed and not in settings.
+    """Verify daemon fails when bank, country or cron are missing."""
     mock_settings.default_bank = None
     mock_settings.default_country = None
 
@@ -49,8 +47,13 @@ def test_daemon_fails_on_missing_options(mock_settings: MagicMock) -> None:
         patch(f"{_MODULE}.init_db"),
     ):
         runner = CliRunner()
-        result = runner.invoke(app, ["daemon"])  # Missing options
 
-    # Typer's error message for missing mandatory option
-    assert result.exit_code != 0
-    assert "Missing option" in result.output
+        # Case 1: Missing mandatory cron (Typer error)
+        result = runner.invoke(app, ["daemon", "--bank", "Imagin", "--country", "ES"])
+        assert result.exit_code != 0
+        assert "Missing option" in result.output
+
+        # Case 2: Missing bank/country (validate_bank_country error)
+        result = runner.invoke(app, ["daemon", "--cron", "0 3 * * *"])
+        assert result.exit_code == 1
+        assert "Error: Bank and Country must be specified" in result.output
