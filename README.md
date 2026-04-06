@@ -50,7 +50,7 @@ Edit `.env`:
 ENABLEBANKING_APP_ID=your_app_id
 ENABLEBANKING_KEY_PATH=/path/to/private.key
 
-# Required (unless specified via --bank and --country options)
+# Optional defaults (to avoid passing --bank and --country on every command)
 # DEFAULT_BANK=
 # DEFAULT_COUNTRY=
 

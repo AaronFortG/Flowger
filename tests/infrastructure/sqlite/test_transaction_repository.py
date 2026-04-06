@@ -53,3 +53,27 @@ def test_sqlite_transaction_repository_upserts_and_fetches(tmp_path: Path) -> No
     assert len(fetched_after) == 1
     assert fetched_after[0].amount == Decimal("20.00")
     assert fetched_after[0].exported_at == export_time
+
+
+def test_sqlite_transaction_repository_existence_check(tmp_path: Path) -> None:
+    """Verify that SqliteTransactionRepository existence check matches by account/bank/country."""
+    db_path = str(tmp_path / "test.db")
+    init_db(db_path)
+    repo = SqliteTransactionRepository(db_path)
+
+    tx = Transaction(
+        id="t1",
+        account_id="acc1",
+        bank_name="bank1",
+        country="FI",
+        date=datetime.date(2023, 1, 1),
+        amount=Decimal("10.50"),
+        currency="EUR",
+        payee="Shop",
+    )
+    repo.save_transactions([tx])
+
+    assert repo.has_transactions("acc1", "bank1", "FI") is True
+    assert repo.has_transactions("acc2", "bank1", "FI") is False
+    assert repo.has_transactions("acc1", "bank2", "FI") is False
+    assert repo.has_transactions("acc1", "bank1", "ES") is False
