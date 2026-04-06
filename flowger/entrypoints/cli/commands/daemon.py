@@ -27,11 +27,10 @@ def daemon(
     Run Flowger in daemon mode, syncing transactions on a schedule.
     """
     settings = get_settings()
-    init_db(settings.database_path)
-
     bank, country = validate_bank_country(
         bank or settings.default_bank, country or settings.default_country
     )
+    init_db(settings.database_path)
 
     if not croniter.is_valid(cron):
         typer.secho(f"Error: Invalid cron expression '{cron}'", fg=typer.colors.RED)

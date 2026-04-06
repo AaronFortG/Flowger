@@ -24,12 +24,11 @@ def export(
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
-    init_db(settings.database_path)
-
     output = output or settings.default_export_file
     bank, country = validate_bank_country(
         bank or settings.default_bank, country or settings.default_country
     )
+    init_db(settings.database_path)
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)
     exporter = ActualCsvExporter(delimiter=delimiter, safe=safe)

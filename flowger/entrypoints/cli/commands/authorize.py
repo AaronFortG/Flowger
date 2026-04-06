@@ -17,11 +17,10 @@ def authorize(
 ) -> None:
     """Exchange the redirect code for a session and persist it locally."""
     settings = get_settings()
-    init_db(settings.database_path)
-
     bank, country = validate_bank_country(
         bank or settings.default_bank, country or settings.default_country
     )
+    init_db(settings.database_path)
 
     with create_bank_provider(settings) as provider:
         typer.echo(f"Authorizing session for {bank} ({country})...")

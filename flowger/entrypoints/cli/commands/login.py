@@ -13,11 +13,10 @@ def login(
 ) -> None:
     """Generate an authorization URL to connect a bank account."""
     settings = get_settings()
-    init_db(settings.database_path)
-
     bank, country = validate_bank_country(
         bank or settings.default_bank, country or settings.default_country
     )
+    init_db(settings.database_path)
 
     with create_bank_provider(settings) as provider:
         typer.echo(f"Requesting authorization for {bank} ({country})...")

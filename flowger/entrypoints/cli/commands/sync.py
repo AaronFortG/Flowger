@@ -17,11 +17,10 @@ def sync(
 ) -> None:
     """Fetch transactions for all synced accounts and persist them locally."""
     settings = get_settings()
-    init_db(settings.database_path)
-
     bank, country = validate_bank_country(
         bank or settings.default_bank, country or settings.default_country
     )
+    init_db(settings.database_path)
 
     session_repo = SqliteSessionRepository(settings.database_path)
     session = session_repo.get_latest_session(bank_name=bank, country=country)

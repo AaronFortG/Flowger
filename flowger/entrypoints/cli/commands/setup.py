@@ -26,11 +26,10 @@ def setup(
     You will be prompted to open a URL in your browser and paste back the code.
     """
     settings = get_settings()
-    init_db(settings.database_path)
-
     bank, country = validate_bank_country(
         bank or settings.default_bank, country or settings.default_country
     )
+    init_db(settings.database_path)
 
     with create_bank_provider(settings) as provider:
         # Step 1: Generate auth URL (reuses the same provider.start_authorization path as login)
