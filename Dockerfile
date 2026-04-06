@@ -19,7 +19,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application source and install the project non-editably
 COPY flowger/ ./flowger/
-COPY pyproject.toml ./
+COPY pyproject.toml uv-lock README.md ./
 RUN uv sync --frozen --no-dev --no-editable
 
 # ─── Stage 2: runtime ─────────────────────────────────────────────────────────
