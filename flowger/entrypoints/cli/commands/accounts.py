@@ -16,10 +16,10 @@ def accounts(
 
     if len(stored) == 0:
         parts = []
-        if bank is not None:
+        if bank is not None and len(bank.strip()) > 0:
             parts.append(bank)
-        if country is not None:
-            parts.append(f"({country})" if bank else country)
+        if country is not None and len(country.strip()) > 0:
+            parts.append(f"({country})" if (bank is not None and len(bank.strip()) > 0) else country)
         scope_str = f" for {' '.join(parts)}" if len(parts) > 0 else ""
 
         typer.echo(f"No accounts found{scope_str}. Run `flowger setup` first.")

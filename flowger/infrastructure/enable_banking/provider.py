@@ -83,7 +83,9 @@ class EnableBankingProvider:
 
         raw_accounts: list[dict[str, Any]] = response.get("accounts", [])
         bank_service_provider = response.get("aspsp")
-        bank_name_resp = (bank_service_provider if bank_service_provider is not None else {}).get("name", bank_name)
+        bank_name_resp = (
+            bank_service_provider if bank_service_provider is not None else {}
+        ).get("name", bank_name)
 
         accounts: list[Account] = []
         for acc in raw_accounts:
@@ -189,11 +191,7 @@ def _resolve_date(tx: dict[str, Any]) -> datetime.date:
     value_date = tx.get("value_date")
     
     raw = None
-    for candidate in (
-        tx.get("transaction_date"),
-        tx.get("booking_date"),
-        tx.get("value_date"),
-    ):
+    for candidate in (transaction_date, booking_date, value_date):
         if candidate is not None and (not isinstance(candidate, str) or len(candidate.strip()) > 0):
             raw = candidate
             break
