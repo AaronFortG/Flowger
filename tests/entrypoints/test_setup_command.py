@@ -3,10 +3,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from typer.testing import CliRunner
 
 from flowger.domain.account import Account
 from flowger.domain.bank_session import BankSession
 from flowger.domain.exceptions import BankProviderError
+from flowger.entrypoints.cli.main import app
 
 _MODULE = "flowger.entrypoints.cli.commands.setup"
 
@@ -68,10 +70,6 @@ def _build_mocks(
 
 def test_setup_happy_path(mock_settings: MagicMock) -> None:
     """Verify setup orchestrates auth URL, code exchange, sync, and account listing."""
-    from typer.testing import CliRunner
-
-    from flowger.entrypoints.cli.main import app
-
     session = _make_session()
     accounts = _make_accounts()
     mock_provider, mock_sr, mock_ar, mock_tr = _build_mocks(accounts, session)
@@ -97,10 +95,6 @@ def test_setup_happy_path(mock_settings: MagicMock) -> None:
 
 def test_setup_with_sync_failures(mock_settings: MagicMock) -> None:
     """Verify setup prints a warning when the initial sync has failures."""
-    from typer.testing import CliRunner
-
-    from flowger.entrypoints.cli.main import app
-
     session = _make_session()
     accounts = _make_accounts()
     # SyncTransactionsUseCase catches BankProviderError — use that to simulate failure
@@ -122,3 +116,94 @@ def test_setup_with_sync_failures(mock_settings: MagicMock) -> None:
 
     assert result.exit_code == 1, result.output
     assert "failure" in result.output.lower()
+
+
+def test_setup_exit_on_empty_code(mock_settings: MagicMock) -> None:
+    """Verify that entering an empty code exits the setup process."""
+    mock_provider = MagicMock()
+    mock_provider.__enter__ = Mock(return_value=mock_provider)
+    mock_provider.__exit__ = Mock(return_value=False)
+
+    with (
+        patch(f"{_MODULE}.get_settings", return_value=mock_settings),
+        patch(f"{_MODULE}.init_db"),
+        patch(f"{_MODULE}.create_bank_provider", return_value=mock_provider),
+        patch("typer.prompt", return_value=""),  # Empty input to exit
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["setup"])
+
+    assert result.exit_code == 0
+    assert "Exiting setup" in result.output
+
+
+def test_setup_retry_flow_success(mock_settings: MagicMock) -> None:
+    """Verify setup succeeds after one failed attempt followed by a successful retry."""
+    session = _make_session()
+    accounts = _make_accounts()
+    mock_provider, mock_sr, mock_ar, mock_tr = _build_mocks(accounts, session)
+
+    # Fail once, then succeed
+    mock_provider.__exit__ = Mock(return_value=False)
+    mock_provider.authorize_session.side_effect = [
+        BankProviderError("Expired code"),
+        (session, accounts),
+    ]
+
+    with (
+        patch(f"{_MODULE}.get_settings", return_value=mock_settings),
+        patch(f"{_MODULE}.init_db"),
+        patch(f"{_MODULE}.create_bank_provider", return_value=mock_provider),
+        patch(f"{_MODULE}.SqliteSessionRepository", return_value=mock_sr),
+        patch(f"{_MODULE}.SqliteAccountRepository", return_value=mock_ar),
+        patch(f"{_MODULE}.SqliteTransactionRepository", return_value=mock_tr),
+        patch("typer.prompt", side_effect=["bad-code", "good-code"]),
+        patch("typer.confirm", return_value=True),  # Accept retry
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["setup"])
+
+    assert result.exit_code == 0
+    assert "Authorization failed" in result.output
+    assert "Session authorized" in result.output
+
+
+def test_setup_retry_flow_decline(mock_settings: MagicMock) -> None:
+    """Verify setup exits if authorization fails and the user declines to retry."""
+    mock_provider = MagicMock()
+    mock_provider.__enter__ = Mock(return_value=mock_provider)
+    mock_provider.__exit__ = Mock(return_value=False)
+    mock_provider.start_authorization.return_value = "http://auth"
+    mock_provider.authorize_session.side_effect = BankProviderError("Bad code")
+
+    with (
+        patch(f"{_MODULE}.get_settings", return_value=mock_settings),
+        patch(f"{_MODULE}.init_db"),
+        patch(f"{_MODULE}.create_bank_provider", return_value=mock_provider),
+        patch("typer.prompt", return_value="bad-code"),
+        patch("typer.confirm", return_value=False),  # Decline retry
+    ):
+        runner = CliRunner()
+        result = runner.invoke(app, ["setup"])
+
+    assert result.exit_code == 1
+    assert "Authorization failed" in result.output
+
+
+def test_setup_fails_when_bank_country_missing(mock_settings: MagicMock) -> None:
+    """Verify setup fails with a validation error when bank and country
+    are missing from options and settings."""
+    # Set settings to None to simulate missing .env values
+    mock_settings.default_bank = None
+    mock_settings.default_country = None
+
+    with (
+        patch(f"{_MODULE}.get_settings", return_value=mock_settings),
+        patch(f"{_MODULE}.init_db"),
+    ):
+        runner = CliRunner()
+        # Invoke without options
+        result = runner.invoke(app, ["setup"])
+
+    assert result.exit_code == 1
+    assert "Error: Bank and Country must be specified" in result.output

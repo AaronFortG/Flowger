@@ -50,10 +50,12 @@ Edit `.env`:
 ENABLEBANKING_APP_ID=your_app_id
 ENABLEBANKING_KEY_PATH=/path/to/private.key
 
-# Optional (commented = default value applies)
+# Optional defaults (to avoid passing --bank and --country on every command)
+# DEFAULT_BANK=
+# DEFAULT_COUNTRY=
+
+# Optional
 # DATABASE_PATH=flowger.db
-# DEFAULT_BANK=Imagin
-# DEFAULT_COUNTRY=ES
 # DEFAULT_REDIRECT_URL=https://enablebanking.com/ais/
 # DEFAULT_EXPORT_FILE=transactions.csv
 ```

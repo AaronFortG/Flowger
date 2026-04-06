@@ -4,15 +4,25 @@ from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import SqliteAccountRepository, init_db
 
 
-def accounts() -> None:
-    """List all accounts stored in the local database."""
+def accounts(
+    bank: str | None = typer.Option(None, help="Filter accounts by bank name"),
+    country: str | None = typer.Option(None, help="Filter accounts by country code"),
+) -> None:
+    """List accounts stored in the local database, optionally filtered by scope."""
     settings = get_settings()
     init_db(settings.database_path)
     account_repo = SqliteAccountRepository(settings.database_path)
-    stored = account_repo.get_accounts()
+    stored = account_repo.get_accounts(bank_name=bank, country=country)
 
     if not stored:
-        typer.echo("No accounts found. Run `flowger authorize` first.")
+        parts = []
+        if bank:
+            parts.append(bank)
+        if country:
+            parts.append(f"({country})" if bank else country)
+        scope_str = f" for {' '.join(parts)}" if parts else ""
+
+        typer.echo(f"No accounts found{scope_str}. Run `flowger setup` first.")
         raise typer.Exit(0)
 
     typer.echo(f"{'ID':<40} {'IBAN':<26} {'Name':<20} Currency")

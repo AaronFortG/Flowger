@@ -1,9 +1,14 @@
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
+from flowger.entrypoints.cli.helpers import validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.exporters.csv import ActualCsvExporter
-from flowger.infrastructure.sqlite import SqliteTransactionRepository, init_db
+from flowger.infrastructure.sqlite import (
+    SqliteAccountRepository,
+    SqliteTransactionRepository,
+    init_db,
+)
 
 
 def export(
@@ -19,14 +24,40 @@ def export(
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
-    init_db(settings.database_path)
-
     output = output or settings.default_export_file
-    bank = bank or settings.default_bank
-    country = country or settings.default_country
+    bank, country = validate_bank_country(
+        bank or settings.default_bank, country or settings.default_country
+    )
+    init_db(settings.database_path)
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)
     exporter = ActualCsvExporter(delimiter=delimiter, safe=safe)
+
+    # Validate that the requested account exists somewhere (accounts or transactions table)
+    account_repo = SqliteAccountRepository(settings.database_path)
+    accounts = account_repo.get_accounts(bank_name=bank, country=country)
+    account_exists = any(acc.id == account_id for acc in accounts)
+
+    has_transactions = False
+    if not account_exists:
+        # Fallback: check if transactions exist even if account metadata is missing
+        has_transactions = transaction_repo.has_transactions(account_id, bank, country)
+
+    if not (account_exists or has_transactions):
+        typer.secho(
+            f"Error: Account ID '{account_id}' not found for {bank} ({country}).\n",
+            fg=typer.colors.RED,
+        )
+        if accounts:
+            typer.echo("Available accounts for this bank/country:")
+            for a in accounts:
+                typer.echo(f"  - {a.id} ({a.name} - {a.iban})")
+        else:
+            typer.echo(
+                "No records for this bank/country found in the local database.\n"
+                "Please run `flowger setup` first to authorize your accounts."
+            )
+        raise typer.Exit(1)
 
     use_case = ExportTransactionsUseCase(
         transaction_repository=transaction_repo,
@@ -34,7 +65,7 @@ def export(
     )
 
     typer.echo(f"Exporting transactions for account {account_id} ({bank}/{country}) to {output}...")
-    use_case.execute(
+    count = use_case.execute(
         account_id=account_id,
         bank_name=bank,
         country=country,
@@ -42,4 +73,11 @@ def export(
         new_only=new_only,
     )
 
-    typer.secho(f"Export complete. File saved to {output}.", fg=typer.colors.GREEN)
+    if count > 0:
+        typer.secho(
+            f"Export complete. {count} transaction(s) saved to {output}.",
+            fg=typer.colors.GREEN,
+        )
+    else:
+        msg = f"No {'new ' if new_only else ''}transactions found for account {account_id}."
+        typer.secho(msg, fg=typer.colors.YELLOW)

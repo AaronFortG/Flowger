@@ -1,7 +1,7 @@
 import typer
 
 from flowger.application.authorize_session import AuthorizeSessionUseCase
-from flowger.entrypoints.cli.helpers import create_bank_provider
+from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
@@ -17,10 +17,10 @@ def authorize(
 ) -> None:
     """Exchange the redirect code for a session and persist it locally."""
     settings = get_settings()
+    bank, country = validate_bank_country(
+        bank or settings.default_bank, country or settings.default_country
+    )
     init_db(settings.database_path)
-
-    bank = bank or settings.default_bank
-    country = country or settings.default_country
 
     with create_bank_provider(settings) as provider:
         typer.echo(f"Authorizing session for {bank} ({country})...")

@@ -6,16 +6,19 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Enable Banking configuration
-    enablebanking_app_id: str = Field(..., description="Application ID from Enable Banking")
+    enablebanking_app_id: str = Field(
+        ..., description="Application ID from Enable Banking"
+    )
     enablebanking_key_path: str = Field(
         ..., description="Path to the RSA private key used for JWT signing"
     )
 
     database_path: str = Field("flowger.db", description="Path to the local SQLite database file")
 
-    # CLI defaults — centralised here so they can be overridden via environment variables
-    default_bank: str = Field("Imagin", description="Default bank name for CLI commands")
-    default_country: str = Field("ES", description="Default country code for CLI commands")
+    # CLI fallbacks — if not provided in the command line, these are loaded from
+    # environment variables (e.g., .env)
+    default_bank: str | None = Field(None, description="Default bank name for CLI commands")
+    default_country: str | None = Field(None, description="Default country code for CLI commands")
     default_redirect_url: str = Field(
         "https://enablebanking.com/ais/",
         description="OAuth redirect URL — must be registered in the Enable Banking application",

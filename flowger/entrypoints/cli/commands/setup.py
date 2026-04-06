@@ -4,7 +4,8 @@ import typer
 
 from flowger.application.authorize_session import AuthorizeSessionUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
-from flowger.entrypoints.cli.helpers import create_bank_provider
+from flowger.domain.exceptions import BankProviderError
+from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
@@ -25,10 +26,10 @@ def setup(
     You will be prompted to open a URL in your browser and paste back the code.
     """
     settings = get_settings()
+    bank, country = validate_bank_country(
+        bank or settings.default_bank, country or settings.default_country
+    )
     init_db(settings.database_path)
-
-    bank = bank or settings.default_bank
-    country = country or settings.default_country
 
     with create_bank_provider(settings) as provider:
         # Step 1: Generate auth URL (reuses the same provider.start_authorization path as login)
@@ -48,11 +49,7 @@ def setup(
             "\nCopy the value of the 'code' parameter from the address bar.\n"
         )
 
-        # Step 2: Wait for the user to paste the code
-        code = typer.prompt("Paste your authorization code here")
-
-        # Step 3: Exchange code — delegates to AuthorizeSessionUseCase (same as `authorize`)
-        typer.echo("\nExchanging code for session...")
+        # Step 2 & 3: Exchange code in a retry loop
         session_repo = SqliteSessionRepository(settings.database_path)
         account_repo = SqliteAccountRepository(settings.database_path)
 
@@ -61,9 +58,31 @@ def setup(
             session_repository=session_repo,
             account_repository=account_repo,
         )
-        session, accounts = authorize_use_case.execute(
-            code=code.strip(), bank_name=bank, country=country
-        )
+
+        while True:
+            code = typer.prompt(
+                "\nPaste your authorization code here (or leave empty to exit)",
+                default="",
+                show_default=False,
+            )
+            if not code.strip():
+                typer.echo("Exiting setup.")
+                raise typer.Exit()
+
+            try:
+                typer.echo("\nExchanging code for session...")
+                session, accounts = authorize_use_case.execute(
+                    code=code.strip(), bank_name=bank, country=country
+                )
+                break  # Success!
+            except BankProviderError as e:
+                typer.secho(
+                    f"\nError: Authorization failed ({e}).\n"
+                    "It's likely the code was pasted incorrectly or has expired.",
+                    fg=typer.colors.RED,
+                )
+                if not typer.confirm("Would you like to try again?"):
+                    raise typer.Exit(1)
 
         typer.secho(
             f"✓ Session authorized. {len(accounts)} account(s) saved.",
