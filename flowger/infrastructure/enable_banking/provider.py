@@ -100,7 +100,9 @@ class EnableBankingProvider:
 
         return session, accounts
 
-    def fetch_transactions(self, session_id: str, account_id: str) -> list[Transaction]:
+    def fetch_transactions(
+        self, session_id: str, account_id: str, bank_name: str, country: str
+    ) -> list[Transaction]:
         """Fetch all transactions for an account, following pagination via continuation_key."""
         endpoint = _TRANSACTIONS_ENDPOINT.format(account_id=account_id)
         raw_txs: list[dict[str, Any]] = []
@@ -114,7 +116,7 @@ class EnableBankingProvider:
                 break
             params = {"continuation_key": continuation_key, "session_id": session_id}
 
-        return [_parse_transaction(tx, account_id) for tx in raw_txs]
+        return [_parse_transaction(tx, account_id, bank_name, country) for tx in raw_txs]
 
 
 def _compute_valid_until(days: int = _ACCESS_VALID_DAYS) -> str:
@@ -123,10 +125,14 @@ def _compute_valid_until(days: int = _ACCESS_VALID_DAYS) -> str:
     return until.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _parse_transaction(tx: dict[str, Any], account_id: str) -> Transaction:
+def _parse_transaction(
+    tx: dict[str, Any], account_id: str, bank_name: str, country: str
+) -> Transaction:
     return Transaction(
         id=_resolve_id(tx),
         account_id=account_id,
+        bank_name=bank_name,
+        country=country,
         date=_resolve_date(tx),
         amount=_resolve_amount(tx),
         currency=_resolve_currency(tx),

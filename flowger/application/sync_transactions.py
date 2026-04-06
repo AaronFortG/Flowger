@@ -33,7 +33,10 @@ class SyncTransactionsUseCase:
         for account in accounts:
             try:
                 transactions = self.__provider.fetch_transactions(
-                    session_id=session_id, account_id=account.id
+                    session_id=session_id,
+                    account_id=account.id,
+                    bank_name=account.bank_name,
+                    country=account.country,
                 )
                 self.__transaction_repository.save_transactions(transactions)
             except (BankProviderError, ValueError) as e:
