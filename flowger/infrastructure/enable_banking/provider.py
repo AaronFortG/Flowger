@@ -25,9 +25,13 @@ class EnableBankingProvider:
         private_key_path: str,
         client: EnableBankingClient | None = None,
     ) -> None:
-        self.__client = client or EnableBankingClient(
-            app_id=app_id,
-            private_key_path=private_key_path,
+        self.__client = (
+            client
+            if client is not None
+            else EnableBankingClient(
+                app_id=app_id,
+                private_key_path=private_key_path,
+            )
         )
 
     def __enter__(self) -> "EnableBankingProvider":
@@ -54,7 +58,7 @@ class EnableBankingProvider:
             "state": state,
             "redirect_url": redirect_url,
         }
-        if psu_type:
+        if len(psu_type) > 0:
             payload["psu_type"] = psu_type
         response = self.__client.post(_AUTH_ENDPOINT, json=payload)
         url: str = response.get("url", "")
@@ -78,12 +82,43 @@ class EnableBankingProvider:
         )
 
         raw_accounts: list[dict[str, Any]] = response.get("accounts", [])
-        bank_name_resp = (response.get("aspsp") or {}).get("name", bank_name)
+        bank_service_provider = response.get("aspsp")
+        bank_name_resp = (
+            bank_service_provider if bank_service_provider is not None else {}
+        ).get("name", bank_name)
 
         accounts: list[Account] = []
         for acc in raw_accounts:
-            iban = acc.get("iban") or (acc.get("account_id") or {}).get("iban", "")
-            acc_name = acc.get("product") or acc.get("name") or acc.get("details") or "Account"
+            # IBAN is found inside the account_id object, but is optional
+            # If IBAN is missing, we fall back to 'other' -> 'identification'
+            account_id_obj = acc.get("account_id")
+            if account_id_obj is None:
+                account_id_obj = {}
+            
+            iban_val = account_id_obj.get("iban")
+            if iban_val is None or (isinstance(iban_val, str) and len(iban_val.strip()) == 0):
+                other_obj = account_id_obj.get("other")
+                if other_obj is None:
+                    other_obj = {}
+                iban_val = other_obj.get("identification")
+
+            iban = (
+                str(iban_val)
+                if (iban_val is not None and len(str(iban_val).strip()) > 0)
+                else ""
+            )
+
+            # Name selection: Prefer 'name', then 'details' per the API response example
+            name_candidates = [
+                acc.get("name"),
+                acc.get("details"),
+            ]
+            acc_name = "Account"
+            for cand in name_candidates:
+                if cand is not None and (not isinstance(cand, str) or len(str(cand).strip()) > 0):
+                    acc_name = str(cand)
+                    break
+
             full_name = f"{bank_name_resp} {acc_name}".strip()
             currency = acc.get("currency", "")
 
@@ -112,9 +147,10 @@ class EnableBankingProvider:
             response = self.__client.get(endpoint, params=params)
             raw_txs.extend(response.get("transactions", []))
             continuation_key = response.get("continuation_key")
-            if not continuation_key:
+            ck_str = str(continuation_key).strip() if continuation_key is not None else ""
+            if len(ck_str) == 0:
                 break
-            params = {"continuation_key": continuation_key, "session_id": session_id}
+            params = {"continuation_key": ck_str, "session_id": session_id}
 
         return [_parse_transaction(tx, account_id, bank_name, country) for tx in raw_txs]
 
@@ -144,10 +180,18 @@ def _parse_transaction(
 def _resolve_id(tx: dict[str, Any]) -> str:
     """Return the unique identifier for a transaction."""
     tx_id = tx.get("entry_reference")
-    if not tx_id:
-        amount_obj = tx.get("transaction_amount") or {}
+    if tx_id is None or len(str(tx_id)) == 0:
+        amount_obj = tx.get("transaction_amount")
+        if amount_obj is None:
+            amount_obj = {}
         amount_str = str(amount_obj.get("amount", ""))
-        date_str = str(tx.get("booking_date") or tx.get("value_date") or "")
+        
+        booking_date = tx.get("booking_date")
+        value_date = tx.get("value_date")
+        booking_date_str = "" if booking_date is None else str(booking_date).strip()
+        value_date_str = "" if value_date is None else str(value_date).strip()
+        date_str = booking_date_str if len(booking_date_str) > 0 else value_date_str
+        
         indicator = tx.get("credit_debit_indicator", "")
         remittance_info = tx.get("remittance_information", "")
         raw_str = f"{date_str}_{amount_str}_{indicator}_{remittance_info}"
@@ -157,8 +201,16 @@ def _resolve_id(tx: dict[str, Any]) -> str:
 
 def _resolve_date(tx: dict[str, Any]) -> datetime.date:
     """Return the best available date — transaction_date > booking_date > value_date."""
-    raw = tx.get("transaction_date") or tx.get("booking_date") or tx.get("value_date")
-    if not raw:
+    transaction_date = tx.get("transaction_date")
+    booking_date = tx.get("booking_date")
+    value_date = tx.get("value_date")
+    
+    raw = None
+    for candidate in (transaction_date, booking_date, value_date):
+        if candidate is not None and (not isinstance(candidate, str) or len(candidate.strip()) > 0):
+            raw = candidate
+            break
+    if raw is None:
         raise ValueError(f"Transaction has no parseable date: {tx.get('entry_reference', '?')}")
     return datetime.date.fromisoformat(str(raw)[:10])
 
@@ -166,8 +218,10 @@ def _resolve_date(tx: dict[str, Any]) -> datetime.date:
 def _resolve_amount(tx: dict[str, Any]) -> Decimal:
     """Return the signed amount based on the credit/debit indicator."""
     indicator = str(tx.get("credit_debit_indicator", "")).upper()
-
-    amount_obj = tx.get("transaction_amount") or {}
+ 
+    amount_obj = tx.get("transaction_amount")
+    if amount_obj is None:
+        amount_obj = {}
     raw_amount = amount_obj.get("amount", "0")
     amount = Decimal(str(raw_amount))
 
@@ -183,7 +237,9 @@ def _resolve_amount(tx: dict[str, Any]) -> Decimal:
 
 
 def _resolve_currency(tx: dict[str, Any]) -> str:
-    amount_obj = tx.get("transaction_amount") or {}
+    amount_obj = tx.get("transaction_amount")
+    if amount_obj is None:
+        amount_obj = {}
     return str(amount_obj.get("currency", ""))
 
 
@@ -196,13 +252,26 @@ def _resolve_payee(tx: dict[str, Any]) -> str:
     if isinstance(remittance, list):
         remittance_str = " ".join(remittance)
     else:
-        remittance_str = str(remittance) if remittance else ""
+        remittance_str = str(remittance) if remittance is not None else ""
 
     if indicator == PaymentType.DEBIT.value:
         # It's an expense, so the payee is the creditor
-        return (tx.get("creditor") or {}).get("name") or remittance_str or "Unknown Payee"
+        creditor = tx.get("creditor")
+        creditor_name = (creditor if creditor is not None else {}).get("name")
+        if creditor_name is not None and len(str(creditor_name).strip()) > 0:
+            return str(creditor_name)
+        if len(remittance_str) > 0:
+            return remittance_str
+        return "Unknown Payee"
+        
     # It's income, so the payee is the debtor
-    return (tx.get("debtor") or {}).get("name") or remittance_str or "Unknown Payee"
+    debtor = tx.get("debtor")
+    debtor_name = (debtor if debtor is not None else {}).get("name")
+    if debtor_name is not None and len(str(debtor_name).strip()) > 0:
+        return str(debtor_name)
+    if len(remittance_str) > 0:
+        return remittance_str
+    return "Unknown Payee"
 
 
 def _resolve_notes(tx: dict[str, Any]) -> str:
@@ -210,4 +279,4 @@ def _resolve_notes(tx: dict[str, Any]) -> str:
     remittance = tx.get("remittance_information")
     if isinstance(remittance, list):
         return " ".join(remittance)
-    return str(remittance) if remittance else ""
+    return str(remittance) if remittance is not None else ""

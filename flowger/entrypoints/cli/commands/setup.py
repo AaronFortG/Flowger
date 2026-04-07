@@ -5,7 +5,11 @@ import typer
 from flowger.application.authorize_session import AuthorizeSessionUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.domain.exceptions import BankProviderError
-from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
+from flowger.entrypoints.cli.helpers import (
+    create_bank_provider,
+    get_effective_value,
+    validate_bank_country,
+)
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
@@ -27,7 +31,8 @@ def setup(
     """
     settings = get_settings()
     bank, country = validate_bank_country(
-        bank or settings.default_bank, country or settings.default_country
+        get_effective_value(bank, settings.default_bank),
+        get_effective_value(country, settings.default_country),
     )
     init_db(settings.database_path)
 
@@ -65,7 +70,7 @@ def setup(
                 default="",
                 show_default=False,
             )
-            if not code.strip():
+            if len(code.strip()) == 0:
                 typer.echo("Exiting setup.")
                 raise typer.Exit()
 
@@ -81,7 +86,7 @@ def setup(
                     "It's likely the code was pasted incorrectly or has expired.",
                     fg=typer.colors.RED,
                 )
-                if not typer.confirm("Would you like to try again?"):
+                if typer.confirm("Would you like to try again?") is False:
                     raise typer.Exit(1)
 
         typer.secho(
@@ -99,7 +104,7 @@ def setup(
         )
         failures = sync_use_case.execute(session_id=session.session_id, accounts=accounts)
 
-        if failures:
+        if len(failures) > 0:
             typer.secho(
                 f"⚠ Sync completed with {len(failures)} failure(s).",
                 fg=typer.colors.YELLOW,
@@ -126,5 +131,5 @@ def setup(
             f"services with `docker compose up -d`."
         )
 
-        if failures:
+        if len(failures) > 0:
             raise typer.Exit(1)

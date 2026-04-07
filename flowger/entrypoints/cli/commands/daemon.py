@@ -6,7 +6,11 @@ import typer
 from croniter import croniter
 
 from flowger.application.sync_transactions import SyncTransactionsUseCase
-from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
+from flowger.entrypoints.cli.helpers import (
+    create_bank_provider,
+    get_effective_value,
+    validate_bank_country,
+)
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
@@ -28,11 +32,12 @@ def daemon(
     """
     settings = get_settings()
     bank, country = validate_bank_country(
-        bank or settings.default_bank, country or settings.default_country
+        get_effective_value(bank, settings.default_bank),
+        get_effective_value(country, settings.default_country),
     )
     init_db(settings.database_path)
 
-    if not croniter.is_valid(cron):
+    if croniter.is_valid(cron) is False:
         typer.secho(f"Error: Invalid cron expression '{cron}'", fg=typer.colors.RED)
         raise typer.Exit(1)
 
@@ -40,7 +45,7 @@ def daemon(
 
     # Fail fast if no accounts exist for the given scope
     account_repo = SqliteAccountRepository(settings.database_path)
-    if not account_repo.get_accounts(bank_name=bank, country=country):
+    if len(account_repo.get_accounts(bank_name=bank, country=country)) == 0:
         typer.secho(
             f"Error: No accounts found for {bank} ({country}) in the local database.\n"
             "Please run `flowger setup` first to authorize your accounts.",
@@ -65,7 +70,7 @@ def daemon(
                 time.sleep(sleep_seconds)
 
             typer.echo(f"\n[{datetime.now(timezone.utc).isoformat()}] Running scheduled sync...")
-            if _run_sync(bank, country, settings):
+            if _run_sync(bank, country, settings) is True:
                 typer.echo("Sync completed successfully.")
 
         except KeyboardInterrupt:
@@ -97,7 +102,7 @@ def _run_sync(bank: str, country: str, settings: Any) -> bool:
     # Use bank/country filtering for accounts
     accounts = account_repo.get_accounts(bank_name=bank, country=country)
 
-    if not accounts:
+    if len(accounts) == 0:
         typer.secho(
             f"No accounts found for {bank} ({country}). "
             "Sync aborted to avoid a no-op run.",
@@ -112,7 +117,7 @@ def _run_sync(bank: str, country: str, settings: Any) -> bool:
             transaction_repository=transaction_repo,
         )
         failures = use_case.execute(session_id=session.session_id, accounts=accounts)
-        if failures:
+        if len(failures) > 0:
             typer.secho(f"Sync completed with {len(failures)} failures.", fg=typer.colors.YELLOW)
             return False
 

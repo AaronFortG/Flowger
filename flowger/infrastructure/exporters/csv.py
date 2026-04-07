@@ -30,7 +30,7 @@ class ActualCsvExporter(ExportService):
             writer.writerow(self._HEADERS)
 
             for tx in sorted_txs:
-                if self.__safe:
+                if self.__safe is True:
                     payee_val = (
                         tx.payee.replace('"', "")
                         .replace("'", "")

@@ -1,3 +1,5 @@
+from typing import overload
+
 import typer
 
 from flowger.infrastructure.config import Settings
@@ -12,13 +14,32 @@ def create_bank_provider(settings: Settings) -> EnableBankingProvider:
     )
 
 
+@overload
+def get_effective_value(val: str | None, default: str) -> str: ...
+
+
+@overload
+def get_effective_value(val: str | None, default: None) -> str | None: ...
+
+
+@overload
+def get_effective_value(val: str | None, default: str | None) -> str | None: ...
+
+
+def get_effective_value(val: str | None, default: str | None) -> str | None:
+    """Return stripped value if it has content, otherwise the default."""
+    if val is not None and len(val.strip()) > 0:
+        return val.strip()
+    return default
+
+
 def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, str]:
     """Ensure bank and country are specified and normalized, otherwise exit with error."""
     # Normalize inputs (strip whitespace and handle None)
-    normalized_bank = (bank or "").strip()
-    normalized_country = (country or "").strip()
+    normalized_bank = (bank if bank is not None else "").strip()
+    normalized_country = (country if country is not None else "").strip()
 
-    if not normalized_bank or not normalized_country:
+    if len(normalized_bank) == 0 or len(normalized_country) == 0:
         typer.secho(
             "\nError: Bank and Country must be specified.\n\n"
             "Use --bank and --country options, or set them in your .env file as:\n"

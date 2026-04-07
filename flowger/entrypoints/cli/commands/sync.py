@@ -1,7 +1,11 @@
 import typer
 
 from flowger.application.sync_transactions import SyncTransactionsUseCase
-from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
+from flowger.entrypoints.cli.helpers import (
+    create_bank_provider,
+    get_effective_value,
+    validate_bank_country,
+)
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
@@ -18,7 +22,8 @@ def sync(
     """Fetch transactions for all synced accounts and persist them locally."""
     settings = get_settings()
     bank, country = validate_bank_country(
-        bank or settings.default_bank, country or settings.default_country
+        get_effective_value(bank, settings.default_bank),
+        get_effective_value(country, settings.default_country),
     )
     init_db(settings.database_path)
 
@@ -38,7 +43,7 @@ def sync(
 
     accounts = account_repo.get_accounts(bank_name=bank, country=country)
 
-    if not accounts:
+    if len(accounts) == 0:
         typer.secho(
             f"No accounts found for {bank} ({country}). "
             "Sync aborted to avoid a no-op run.",
@@ -56,7 +61,7 @@ def sync(
         typer.echo(f"Syncing transactions for all accounts in {bank} ({country})...")
         failures = use_case.execute(session_id=session.session_id, accounts=accounts)
 
-    if failures:
+    if len(failures) > 0:
         typer.secho(f"\nCompleted with {len(failures)} failures:", fg=typer.colors.YELLOW)
         for account_id, error in failures:
             typer.echo(f"  - Account {account_id}: {error}")

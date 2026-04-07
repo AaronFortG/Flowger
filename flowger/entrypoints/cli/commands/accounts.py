@@ -14,13 +14,14 @@ def accounts(
     account_repo = SqliteAccountRepository(settings.database_path)
     stored = account_repo.get_accounts(bank_name=bank, country=country)
 
-    if not stored:
+    if len(stored) == 0:
         parts = []
-        if bank:
+        if bank is not None and len(bank.strip()) > 0:
             parts.append(bank)
-        if country:
-            parts.append(f"({country})" if bank else country)
-        scope_str = f" for {' '.join(parts)}" if parts else ""
+        if country is not None and len(country.strip()) > 0:
+            has_bank = bank is not None and len(bank.strip()) > 0
+            parts.append(f"({country})" if has_bank else country)
+        scope_str = f" for {' '.join(parts)}" if len(parts) > 0 else ""
 
         typer.echo(f"No accounts found{scope_str}. Run `flowger setup` first.")
         raise typer.Exit(0)

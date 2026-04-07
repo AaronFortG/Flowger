@@ -45,7 +45,7 @@ class SqliteAccountRepository:
             params.append(country)
 
         query = base_query
-        if where_clauses:
+        if len(where_clauses) > 0:
             query += " WHERE " + " AND ".join(where_clauses)
 
         with sqlite3.connect(self.__db_path) as conn:

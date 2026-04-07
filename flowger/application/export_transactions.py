@@ -28,7 +28,7 @@ class ExportTransactionsUseCase:
         If new_only is True, fetches unexported transactions and marks them as exported.
         Returns the number of transactions exported.
         """
-        if new_only:
+        if new_only is True:
             transactions = self.__transaction_repository.get_unexported_transactions(
                 account_id,
                 bank_name,
@@ -43,7 +43,7 @@ class ExportTransactionsUseCase:
 
         self.__export_service.write_transactions(transactions, output_path)
 
-        if new_only:
+        if new_only is True:
             now = datetime.now(tz=timezone.utc)
             for tx in transactions:
                 tx.exported_at = now
