@@ -22,6 +22,10 @@ def get_effective_value(val: str | None, default: str) -> str: ...
 def get_effective_value(val: str | None, default: None) -> str | None: ...
 
 
+@overload
+def get_effective_value(val: str | None, default: str | None) -> str | None: ...
+
+
 def get_effective_value(val: str | None, default: str | None) -> str | None:
     """Return stripped value if it has content, otherwise the default."""
     if val is not None and len(val.strip()) > 0:
