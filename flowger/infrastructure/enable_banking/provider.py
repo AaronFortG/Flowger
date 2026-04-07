@@ -147,9 +147,10 @@ class EnableBankingProvider:
             response = self.__client.get(endpoint, params=params)
             raw_txs.extend(response.get("transactions", []))
             continuation_key = response.get("continuation_key")
-            if continuation_key is None or len(continuation_key) == 0:
+            ck_str = str(continuation_key).strip() if continuation_key is not None else ""
+            if len(ck_str) == 0:
                 break
-            params = {"continuation_key": continuation_key, "session_id": session_id}
+            params = {"continuation_key": ck_str, "session_id": session_id}
 
         return [_parse_transaction(tx, account_id, bank_name, country) for tx in raw_txs]
 
