@@ -1,7 +1,7 @@
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
-from flowger.entrypoints.cli.helpers import validate_bank_country
+from flowger.entrypoints.cli.helpers import get_effective_value, validate_bank_country
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.exporters.csv import ActualCsvExporter
 from flowger.infrastructure.sqlite import (
@@ -24,14 +24,10 @@ def export(
 ) -> None:
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
-    output = (
-        output
-        if (output is not None and len(output.strip()) > 0)
-        else settings.default_export_file
-    )
+    output = get_effective_value(output, settings.default_export_file)
     bank, country = validate_bank_country(
-        bank if (bank is not None and len(bank.strip()) > 0) else settings.default_bank,
-        country if (country is not None and len(country.strip()) > 0) else settings.default_country,
+        get_effective_value(bank, settings.default_bank),
+        get_effective_value(country, settings.default_country),
     )
     init_db(settings.database_path)
 

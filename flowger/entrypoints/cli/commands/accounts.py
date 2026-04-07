@@ -19,7 +19,8 @@ def accounts(
         if bank is not None and len(bank.strip()) > 0:
             parts.append(bank)
         if country is not None and len(country.strip()) > 0:
-            parts.append(f"({country})" if (bank is not None and len(bank.strip()) > 0) else country)
+            has_bank = bank is not None and len(bank.strip()) > 0
+            parts.append(f"({country})" if has_bank else country)
         scope_str = f" for {' '.join(parts)}" if len(parts) > 0 else ""
 
         typer.echo(f"No accounts found{scope_str}. Run `flowger setup` first.")

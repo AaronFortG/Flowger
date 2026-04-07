@@ -1,3 +1,5 @@
+from typing import overload
+
 import typer
 
 from flowger.infrastructure.config import Settings
@@ -10,6 +12,21 @@ def create_bank_provider(settings: Settings) -> EnableBankingProvider:
         app_id=settings.enablebanking_app_id,
         private_key_path=settings.enablebanking_key_path,
     )
+
+
+@overload
+def get_effective_value(val: str | None, default: str) -> str: ...
+
+
+@overload
+def get_effective_value(val: str | None, default: None) -> str | None: ...
+
+
+def get_effective_value(val: str | None, default: str | None) -> str | None:
+    """Return stripped value if it has content, otherwise the default."""
+    if val is not None and len(val.strip()) > 0:
+        return val.strip()
+    return default
 
 
 def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, str]:

@@ -97,6 +97,13 @@ def test_authorize_session_account_name_fallbacks() -> None:
                 "name": " ",  # Empty string after stripping
                 "details": "Checking Backup",
                 "currency": "EUR",
+            },
+            {
+                "uid": "acc-missing-key",
+                "account_id": {"iban": "ES00000000003"},
+                # 'name' key is completely missing
+                "details": "Savings Account",
+                "currency": "EUR",
             }
         ],
         "aspsp": {"name": "ImaginBank"},
@@ -106,9 +113,11 @@ def test_authorize_session_account_name_fallbacks() -> None:
         code="code-2", bank_name="Imagin", country="ES"
     )
 
-    assert len(accounts) == 1
+    assert len(accounts) == 2
     # Should fall back to "details" because "name" is blank
     assert accounts[0].name == "ImaginBank Checking Backup"
+    # Should fall back to "details" because 'name' key is missing
+    assert accounts[1].name == "ImaginBank Savings Account"
 
 
 def test_authorize_session_nested_iban_extraction() -> None:

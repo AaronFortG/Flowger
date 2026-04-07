@@ -102,7 +102,11 @@ class EnableBankingProvider:
                     other_obj = {}
                 iban_val = other_obj.get("identification")
 
-            iban = str(iban_val) if (iban_val is not None and len(str(iban_val).strip()) > 0) else ""
+            iban = (
+                str(iban_val)
+                if (iban_val is not None and len(str(iban_val).strip()) > 0)
+                else ""
+            )
 
             # Name selection: Prefer 'name', then 'details' per the API response example
             name_candidates = [
