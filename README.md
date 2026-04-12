@@ -70,7 +70,7 @@ The RSA key path defaults to `/keys/private.pem` inside the container, which mat
 
 > **Tip:** To add a second bank, duplicate the service block with a different `BANK`, `COUNTRY`, and `SYNC_CRON`. All services share the same `db` volume so transactions from all banks land in one database.
 
-### 3. Start the daemon
+### 4. Start the daemon
 
 ```bash
 docker compose up -d
@@ -90,15 +90,15 @@ docker compose exec flowger-imagin flowger authorize --code <CODE>
 
 The daemon detects the account automatically, runs the initial sync, exports CSV files to `./exports/`, and starts the scheduled loop.
 
-### 4. Useful commands
+### 5. Useful commands
 
 ```bash
-docker compose exec flowger-imagin flowger accounts               # List accounts
-docker compose exec flowger-imagin flowger sync                    # Manual sync
-docker compose exec flowger-imagin flowger export --account-id <ID>  # Manual export
+docker compose exec --user appuser flowger-imagin flowger accounts               # List accounts
+docker compose exec --user appuser flowger-imagin flowger sync                    # Manual sync
+docker compose exec --user appuser flowger-imagin flowger export --account-id <ID>  # Manual export
 ```
 
-> **Tip:** If you prefer a shorter syntax, use the convenience script: `./fg setup`, `./fg sync`, `./fg export --account-id <ID>`.
+> **Note:** Pass `--user appuser` to `docker compose exec` so that exported files on the host bind mount are owned by `appuser` (UID 10001) rather than root. Omit it only if you intentionally want root-owned output.
 
 ---
 

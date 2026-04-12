@@ -165,17 +165,24 @@ def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | N
         account_repo = SqliteAccountRepository(settings.database_path)
         session_repo = SqliteSessionRepository(settings.database_path)
 
-        while True:
-            accounts = account_repo.get_accounts(bank_name=bank, country=country)
-            if len(accounts) > 0:
-                typer.secho(
-                    "✓ Account detected. Proceeding with initial sync...\n",
-                    fg=typer.colors.GREEN,
-                )
-                break
+        try:
+            while True:
+                accounts = account_repo.get_accounts(bank_name=bank, country=country)
+                if len(accounts) > 0:
+                    typer.secho(
+                        "✓ Account detected. Proceeding with initial sync...\n",
+                        fg=typer.colors.GREEN,
+                    )
+                    break
 
-            time.sleep(_POLL_INTERVAL)
-            typer.echo("  Waiting for authorization...")
+                time.sleep(_POLL_INTERVAL)
+                typer.echo("  Waiting for authorization...")
+        except KeyboardInterrupt:
+            typer.secho(
+                "\nSetup cancelled while waiting for authorization.",
+                fg=typer.colors.YELLOW,
+            )
+            return None
 
         # Step 3: Run initial sync once accounts appear
         session = session_repo.get_latest_session(bank_name=bank, country=country)
