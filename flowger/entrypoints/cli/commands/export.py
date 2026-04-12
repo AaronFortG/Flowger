@@ -65,7 +65,10 @@ def export(
         export_service=exporter,
     )
 
-    typer.echo(f"Exporting transactions for account {account_id} ({bank}/{country}) to {output}...")
+    typer.echo(
+        f"Exporting transactions for account {account_id} ({bank}/{country}) "
+        f"to {output} (container path)..."
+    )
     count = use_case.execute(
         account_id=account_id,
         bank_name=bank,
@@ -78,6 +81,10 @@ def export(
         typer.secho(
             f"Export complete. {count} transaction(s) saved to {output}.",
             fg=typer.colors.GREEN,
+        )
+        typer.echo(
+            "  (This is a container path — check the bind-mounted host directory, "
+            "e.g., ./exports/)"
         )
     else:
         msg = f"No {'new ' if new_only is True else ''}transactions found for account {account_id}."

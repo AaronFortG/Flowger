@@ -287,7 +287,7 @@ def _run_export(
         )
         if count > 0:
             typer.secho(
-                f"  Exported {count} transaction(s) → {output_path}",
+                f"  Exported {count} transaction(s) → {output_path} (container path)",
                 fg=typer.colors.GREEN,
             )
         else:
