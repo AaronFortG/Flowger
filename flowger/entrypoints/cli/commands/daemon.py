@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -5,6 +6,7 @@ from datetime import datetime, timezone
 import typer
 from croniter import croniter
 
+from flowger.application.export_transactions import ExportTransactionsUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.domain.account import Account
 from flowger.domain.exceptions import BankProviderError
@@ -14,6 +16,7 @@ from flowger.entrypoints.cli.helpers import (
     validate_bank_country,
 )
 from flowger.infrastructure.config import Settings, get_settings
+from flowger.infrastructure.exporters.csv import ActualCsvExporter
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
     SqliteSessionRepository,
@@ -252,4 +255,40 @@ def _run_sync(bank: str, country: str, settings: Settings) -> bool:
             return False
 
     typer.secho("Sync completed successfully.", fg=typer.colors.GREEN)
+
+    # Auto-export: one CSV per account in the same directory as default_export_file
+    _run_export(accounts, bank, country, settings)
+
     return True
+
+
+def _run_export(
+    accounts: list[Account], bank: str, country: str, settings: Settings
+) -> None:
+    """Export each account's transactions to a CSV file."""
+    export_dir = os.path.dirname(settings.default_export_file) or "."
+    if not os.path.isdir(export_dir):
+        os.makedirs(export_dir, exist_ok=True)
+
+    transaction_repo = SqliteTransactionRepository(settings.database_path)
+    exporter = ActualCsvExporter(delimiter=",", safe=True)
+    use_case = ExportTransactionsUseCase(
+        transaction_repository=transaction_repo,
+        export_service=exporter,
+    )
+
+    for acc in accounts:
+        output_path = os.path.join(export_dir, f"{acc.id}.csv")
+        count = use_case.execute(
+            account_id=acc.id,
+            bank_name=bank,
+            country=country,
+            output_path=output_path,
+        )
+        if count > 0:
+            typer.secho(
+                f"  Exported {count} transaction(s) → {output_path}",
+                fg=typer.colors.GREEN,
+            )
+        else:
+            typer.echo(f"  No transactions to export for {acc.id}.")
