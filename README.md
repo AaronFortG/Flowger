@@ -21,7 +21,76 @@ It is also a learning project — intentionally built with a clean layered archi
 
 ---
 
-## Setup
+## Quick Start — Docker (Recommended)
+
+Flowger runs as a Docker daemon. You only need to set a few environment variables and run `docker compose up -d`. On first start, the container guides you through bank setup interactively, then runs as a daemon syncing on your schedule.
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-org/flowger.git
+cd flowger
+```
+
+### 2. Place your RSA key
+
+Put your Enable Banking RSA private key at `keys/private.pem`:
+
+```bash
+mkdir -p keys
+cp /path/to/your/private.pem keys/private.pem
+```
+
+### 3. Edit `docker-compose.yml` environment variables
+
+Open `docker-compose.yml` and update the `environment:` block for your service:
+
+```yaml
+environment:
+  # Required: Enable Banking credentials
+  - ENABLEBANKING_APP_ID=your_app_id_here
+
+  # Required: Bank scope for this container
+  - BANK=Imagin
+  - COUNTRY=ES
+
+  # Optional: Sync schedule (default: every 6 hours)
+  - SYNC_CRON=0 */6 * * *
+
+  # Optional: Storage path
+  - DATABASE_PATH=/data/flowger.db
+```
+
+> **Tip:** To add a second bank, duplicate the service block with a different `BANK`, `COUNTRY`, and `SYNC_CRON`. All services share the same `db` volume so transactions from all banks land in one database.
+
+### 4. Start the daemon
+
+```bash
+docker compose up -d
+```
+
+On the **first run**, the container will print an authorization URL. View the logs:
+
+```bash
+docker compose logs -f flowger-imagin
+```
+
+Open the URL in your browser, authenticate with your bank, then paste the `code` from the redirect URL back into the log prompt. After setup completes, the daemon starts automatically.
+
+### 5. Export transactions
+
+```bash
+docker compose exec flowger-imagin flowger accounts
+docker compose exec flowger-imagin flowger export --account-id <ACCOUNT_UID> --output /exports/transactions.csv
+```
+
+Exported CSV files are written to your local `./exports/` directory.
+
+---
+
+## Local Setup (Python)
+
+Prefer to run Flowger directly with Python? Follow these steps.
 
 ### 1. Clone the repository
 
@@ -73,7 +142,7 @@ Configuration is valid.
 
 ---
 
-## Full Usage Flow
+## Full Usage Flow (Local Python)
 
 Flowger works in five steps. Run them in order the first time.
 
@@ -156,8 +225,8 @@ Available CLI Flags:
 * `--account-id`: The UID of the account
 * `--output`: Path to the CSV (defaults to `transactions.csv`)
 * `--delimiter`: Changes the CSV column separator (defaults to `,`)
-* `--safe` / `--no-safe`: Toggles string sterilization (defaults to `--safe`). 
-  
+* `--safe` / `--no-safe`: Toggles string sterilization (defaults to `--safe`).
+
 **About `safe` mode and Quotes:**
 Actual Budget requires precise CSV imports and often crashes when double-quotes are encountered. By default, `csv.writer` automatically wraps fields in double-quotes (`""`) when a field contains characters that require quoting, such as the current `--delimiter`. To protect brittle importers, Flowger defaults to `--safe`, which strips quote characters and sanitizes strings that contain the active delimiter (for example, converting nested commas into spaces if `,` is the delimiter) before CSV writing to reduce the likelihood of generated quotes. Some content, such as embedded newlines, may still cause `csv.writer` to quote a field. Pass `--no-safe` if you want less-sanitized output written as-is apart from normal CSV escaping rules.
 
@@ -168,6 +237,7 @@ Export complete. File saved to transactions.csv.
 ```
 
 The CSV is formatted for direct import into **Actual Budget** (`Date, Payee, Notes, Amount`).
+
 ---
 
 ## Development
@@ -243,30 +313,36 @@ docker pull aaronfort/flowger:latest
 docker pull ghcr.io/aaronfortg/flowger:latest
 ```
 
+### Daemon via docker-compose (Recommended)
+
+See the [Quick Start](#quick-start--docker-recommended) section above for the full setup.
+
+All services share the same `db` volume, so transactions from all banks land in one database. If your services also share the same `/exports` mount, make sure each service writes to a different export file by setting `DEFAULT_EXPORT_FILE` per service.
+
 ### One-shot commands
 
-Run any CLI command and exit. Mount your key and data directory:
+Run any CLI command and exit:
 
 ```bash
-docker run --rm \
-  -v $(pwd)/data:/data \
-  -v $(pwd)/keys/private.pem:/keys/private.pem:ro \
-  -v $(pwd)/exports:/exports \
-  --env-file .env \
-  aaronfort/flowger:latest \
-  sync --bank Imagin --country ES
+docker compose exec flowger-imagin flowger accounts
 ```
 
-### Automated Daemon via docker-compose
+---
 
-Copy `docker-compose.yml` from the repository, place your `.env` and `keys/private.pem` alongside it, then run:
+## Environment Variables
 
-```bash
-docker compose up -d
-docker compose logs -f flowger-imagin
-```
-
-To add a second bank, duplicate the service block in `docker-compose.yml` with a different `--bank`, `--country`, and `--cron` schedule. All services share the same `db` volume, so transactions from all banks land in one database. If your services also share the same `/exports` mount, make sure each service writes to a different export file instead of the default `/exports/transactions.csv`, for example by setting a distinct `DEFAULT_EXPORT_FILE` per service (such as `/exports/imagin-transactions.csv` and `/exports/santander-transactions.csv`) or by using `flowger export --output` with a bank-specific path.
+| Variable | Required | Description |
+|---|---|---|
+| `ENABLEBANKING_APP_ID` | Yes | Your Enable Banking app ID |
+| `ENABLEBANKING_KEY_PATH` | Yes | Path to RSA private key (PEM) inside the container |
+| `BANK` | Yes | Bank name for this container instance (e.g., `Imagin`) |
+| `COUNTRY` | Yes | Country code for this container instance (e.g., `ES`) |
+| `SYNC_CRON` | No | Cron schedule for daemon sync (default: `0 */6 * * *`) |
+| `DATABASE_PATH` | No | SQLite DB path inside container (default: `/data/flowger.db`) |
+| `DEFAULT_BANK` | No | Fallback bank for local Python CLI (`.env` only) |
+| `DEFAULT_COUNTRY` | No | Fallback country for local Python CLI (`.env` only) |
+| `DEFAULT_REDIRECT_URL` | No | OAuth redirect URL |
+| `DEFAULT_EXPORT_FILE` | No | Default CSV export path |
 
 ---
 

@@ -1,47 +1,59 @@
 # Flowger docker-compose — one service per bank.
 # All services share the same `db` volume so all transactions land in one database.
 #
-# First-time setup (run once per bank):
-#   docker compose run --rm flowger-imagin setup --bank Imagin --country ES
+# Quick start:
+#   1. Edit the environment variables below with your Enable Banking credentials.
+#   2. Place your RSA private key at keys/private.pem (or update the volume path).
+#   3. Run: docker compose up -d
 #
-# Start automated daemons:
-#   docker compose up -d
+# On first start, the container will guide you through bank setup interactively.
+# After setup is complete, it runs as a daemon syncing on the configured schedule.
 #
-# View logs:
-#   docker compose logs -f flowger-imagin
+# View logs:  docker compose logs -f flowger-imagin
+# Stop:       docker compose down
 
 services:
   flowger-imagin:
-    image: ghcr.io/aaronfortg/flowger:latest
-    # Override `image` with `build: .` to test a local build instead:
-    # build: .
-    command: >
-      daemon
-      --bank Imagin
-      --country ES
-      --cron "0 3 * * *"
+    build: .
+    environment:
+      # ── Required: Enable Banking credentials ────────────────────────────
+      - ENABLEBANKING_APP_ID=your_app_id_here        # ← replace with your app ID
+
+      # ── Required: Bank scope for this container ─────────────────────────
+      - BANK=Imagin                                   # ← bank name
+      - COUNTRY=ES                                    # ← country code
+
+      # ── Optional: Sync schedule ─────────────────────────────────────────
+      # Default is every 6 hours. Change the cron expression as needed.
+      - SYNC_CRON=0 */6 * * *
+
+      # ── Optional: Storage paths (defaults shown) ────────────────────────
+      - DATABASE_PATH=/data/flowger.db
+
     volumes:
       - db:/data
       - ./keys/private.pem:/keys/private.pem:ro
       - ./exports:/exports
-    env_file: .env
     restart: unless-stopped
 
   # ── Additional banks ────────────────────────────────────────────────────────
-  # Uncomment and adjust to add more banks. Each runs its own schedule independently.
+  # Uncomment and customize to add more banks. Each runs its own schedule.
+  # All share the same `db` volume, so transactions from all banks land in one DB.
+  #
+  # If you share the /exports mount, give each service a unique export file:
+  #   - DEFAULT_EXPORT_FILE=/exports/imagin-transactions.csv
   #
   # flowger-n26:
-  #   image: ghcr.io/aaronfortg/flowger:latest
-  #   command: >
-  #     daemon
-  #     --bank N26
-  #     --country DE
-  #     --cron "0 6 * * *"
+  #   build: .
+  #   environment:
+  #     - ENABLEBANKING_APP_ID=your_app_id_here
+  #     - BANK=N26
+  #     - COUNTRY=DE
+  #     - SYNC_CRON=0 */6 * * *
   #   volumes:
   #     - db:/data
   #     - ./keys/private.pem:/keys/private.pem:ro
   #     - ./exports:/exports
-  #   env_file: .env
   #   restart: unless-stopped
 
 volumes:

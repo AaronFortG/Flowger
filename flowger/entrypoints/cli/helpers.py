@@ -42,9 +42,10 @@ def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, s
     if len(normalized_bank) == 0 or len(normalized_country) == 0:
         typer.secho(
             "\nError: Bank and Country must be specified.\n\n"
-            "Use --bank and --country options, or set them in your .env file as:\n"
-            "  DEFAULT_BANK=...\n"
-            "  DEFAULT_COUNTRY=...",
+            "  Docker:  set BANK and COUNTRY in your docker-compose.yml environment block.\n"
+            "  Local:   use --bank and --country options, or set in your .env file as:\n"
+            "             DEFAULT_BANK=...\n"
+            "             DEFAULT_COUNTRY=...",
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)

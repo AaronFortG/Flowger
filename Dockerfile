@@ -56,4 +56,4 @@ ENV PYTHONUNBUFFERED=1
 VOLUME ["/data", "/exports", "/keys"]
 
 ENTRYPOINT ["flowger"]
-CMD ["--help"]
+CMD ["daemon"]

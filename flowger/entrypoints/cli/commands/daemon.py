@@ -1,17 +1,21 @@
 import time
+import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 import typer
 from croniter import croniter
 
+from flowger.application.authorize_session import AuthorizeSessionUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
+from flowger.domain.account import Account
+from flowger.domain.bank_session import BankSession
+from flowger.domain.exceptions import BankProviderError
 from flowger.entrypoints.cli.helpers import (
     create_bank_provider,
     get_effective_value,
     validate_bank_country,
 )
-from flowger.infrastructure.config import get_settings
+from flowger.infrastructure.config import Settings, get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
     SqliteSessionRepository,
@@ -23,38 +27,56 @@ from flowger.infrastructure.sqlite import (
 def daemon(
     bank: str | None = typer.Option(None, "--bank", help="Bank name to sync (overrides .env)"),
     country: str | None = typer.Option(None, "--country", help="Country code (overrides .env)"),
-    cron: str = typer.Option(
-        ..., "--cron", help="Cron expression for scheduling (e.g. '0 3 * * *')"
-    ),
+    cron: str | None = typer.Option(None, "--cron", help="Cron expression for scheduling"),
 ) -> None:
     """
     Run Flowger in daemon mode, syncing transactions on a schedule.
+
+    If no accounts exist for the given bank/country, this command will
+    automatically guide you through the one-time setup (generate auth URL,
+    exchange code, initial sync) before entering the daemon loop.
     """
     settings = get_settings()
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
-    init_db(settings.database_path)
 
-    if croniter.is_valid(cron) is False:
-        typer.secho(f"Error: Invalid cron expression '{cron}'", fg=typer.colors.RED)
-        raise typer.Exit(1)
+    # Resolve bank/country: CLI flag > settings.bank (Docker env) > settings.default_bank (.env)
+    resolved_bank = get_effective_value(bank, settings.bank) or settings.default_bank
+    resolved_country = get_effective_value(country, settings.country) or settings.default_country
+    bank, country = validate_bank_country(resolved_bank, resolved_country)
 
-    typer.echo(f"Starting Flowger daemon for {bank} ({country}) with schedule: {cron}")
-
-    # Fail fast if no accounts exist for the given scope
-    account_repo = SqliteAccountRepository(settings.database_path)
-    if len(account_repo.get_accounts(bank_name=bank, country=country)) == 0:
+    # Resolve cron: CLI flag > settings.sync_cron (Docker env)
+    resolved_cron = get_effective_value(cron, settings.sync_cron) or "0 */6 * * *"
+    if croniter.is_valid(resolved_cron) is False:
         typer.secho(
-            f"Error: No accounts found for {bank} ({country}) in the local database.\n"
-            "Please run `flowger setup` first to authorize your accounts.",
-            fg=typer.colors.RED,
+            f"Error: Invalid cron expression '{resolved_cron}'", fg=typer.colors.RED
         )
         raise typer.Exit(1)
 
+    init_db(settings.database_path)
+
+    account_repo = SqliteAccountRepository(settings.database_path)
+
+    # Check if we already have accounts for this bank/country
+    existing_accounts = account_repo.get_accounts(bank_name=bank, country=country)
+
+    if len(existing_accounts) == 0:
+        # First run — bootstrap via interactive setup
+        accounts = _run_setup(bank, country, settings)
+        if accounts is None:
+            typer.secho(
+                "\nSetup was not completed. The daemon cannot start without accounts.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+    else:
+        accounts = existing_accounts
+        typer.echo(f"Found {len(accounts)} account(s) for {bank} ({country}).")
+
+    typer.echo(
+        f"Starting Flowger daemon for {bank} ({country}) with schedule: {resolved_cron}"
+    )
+
     # Seed the iterator once to prevent drift from re-calculating from "now"
-    cron_iter = croniter(cron, datetime.now(timezone.utc))
+    cron_iter = croniter(resolved_cron, datetime.now(timezone.utc))
 
     while True:
         try:
@@ -70,8 +92,7 @@ def daemon(
                 time.sleep(sleep_seconds)
 
             typer.echo(f"\n[{datetime.now(timezone.utc).isoformat()}] Running scheduled sync...")
-            if _run_sync(bank, country, settings) is True:
-                typer.echo("Sync completed successfully.")
+            _run_sync(bank, country, settings)
 
         except KeyboardInterrupt:
             typer.echo("\nDaemon stopped by user.")
@@ -82,10 +103,118 @@ def daemon(
             time.sleep(60)
             # Re-seed from now after an error to ensure we don't try to "catch up"
             # on multiple missed runs if the error persists for a long time.
-            cron_iter = croniter(cron, datetime.now(timezone.utc))
+            cron_iter = croniter(resolved_cron, datetime.now(timezone.utc))
 
 
-def _run_sync(bank: str, country: str, settings: Any) -> bool:
+def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | None:
+    """
+    Interactive one-time setup: authorize a bank account and run an initial sync.
+    Returns the list of accounts on success, or None if the user aborted.
+    """
+    typer.secho(
+        f"\nNo accounts found for {bank} ({country}). Starting first-time setup...\n",
+        fg=typer.colors.YELLOW,
+    )
+
+    with create_bank_provider(settings) as provider:
+        # Step 1: Generate auth URL
+        random_state = uuid.uuid4().hex
+        url = provider.start_authorization(
+            bank_name=bank,
+            country=country,
+            redirect_url=settings.default_redirect_url,
+            state=random_state,
+        )
+
+        typer.echo("Open the following URL in your browser to authenticate:\n")
+        typer.secho(url, fg=typer.colors.CYAN)
+        typer.echo(
+            "\nAfter logging in, you will be redirected to a URL containing '?code=...'."
+            "\nCopy the value of the 'code' parameter from the address bar.\n"
+        )
+
+        # Step 2 & 3: Exchange code with retries
+        account_repo = SqliteAccountRepository(settings.database_path)
+        session_repo = SqliteSessionRepository(settings.database_path)
+
+        authorize_use_case = AuthorizeSessionUseCase(
+            provider=provider,
+            session_repository=session_repo,
+            account_repository=account_repo,
+        )
+
+        session: BankSession
+        accounts: list[Account] = []
+
+        while True:
+            code = typer.prompt(
+                "\nPaste your authorization code here (or leave empty to exit)",
+                default="",
+                show_default=False,
+            )
+            if len(code.strip()) == 0:
+                typer.echo("Setup aborted by user.")
+                return None
+
+            try:
+                typer.echo("\nExchanging code for session...")
+                session, accounts = authorize_use_case.execute(
+                    code=code.strip(), bank_name=bank, country=country
+                )
+                break  # Success!
+            except BankProviderError as e:
+                typer.secho(
+                    f"\nError: Authorization failed ({e}).\n"
+                    "It's likely the code was pasted incorrectly or has expired.",
+                    fg=typer.colors.RED,
+                )
+                if typer.confirm("Would you like to try again?") is False:
+                    return None
+
+        typer.secho(
+            f"✓ Session authorized. {len(accounts)} account(s) saved.",
+            fg=typer.colors.GREEN,
+        )
+
+        # Step 4: Run initial sync
+        typer.echo("\nRunning initial transaction sync...")
+        transaction_repo = SqliteTransactionRepository(settings.database_path)
+        sync_use_case = SyncTransactionsUseCase(
+            provider=provider,
+            account_repository=account_repo,
+            transaction_repository=transaction_repo,
+        )
+        failures = sync_use_case.execute(session_id=session.session_id, accounts=accounts)
+
+        if len(failures) > 0:
+            typer.secho(
+                f"⚠ Initial sync completed with {len(failures)} failure(s).",
+                fg=typer.colors.YELLOW,
+            )
+        else:
+            typer.secho("✓ Initial sync complete.", fg=typer.colors.GREEN)
+
+        # Step 5: Print account summary
+        typer.echo("\nYour authorized accounts:\n")
+        typer.echo(
+            f"{'Bank':<15} {'Country':<8} {'ID':<40} {'IBAN':<26} {'Name':<20} Currency"
+        )
+        typer.echo("-" * 120)
+        for acc in accounts:
+            typer.echo(
+                f"{acc.bank_name:<15} {acc.country:<8} {acc.id:<40} "
+                f"{acc.iban:<26} {acc.name:<20} {acc.currency}"
+            )
+
+        typer.secho(
+            "\n✓ Setup complete. Daemon will now start syncing on schedule.",
+            fg=typer.colors.GREEN,
+        )
+
+        return accounts
+
+
+def _run_sync(bank: str, country: str, settings: Settings) -> bool:
     session_repo = SqliteSessionRepository(settings.database_path)
     session = session_repo.get_latest_session(bank_name=bank, country=country)
 
@@ -121,4 +250,5 @@ def _run_sync(bank: str, country: str, settings: Any) -> bool:
             typer.secho(f"Sync completed with {len(failures)} failures.", fg=typer.colors.YELLOW)
             return False
 
+    typer.secho("Sync completed successfully.", fg=typer.colors.GREEN)
     return True

@@ -1,11 +1,17 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Determine whether to load .env file (for local dev); Docker users
+# inject environment variables directly and have no .env file.
+_ENV_FILE = ".env" if Path(".env").exists() else None
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    # Enable Banking configuration
+    # Enable Banking credentials
     enablebanking_app_id: str = Field(
         ..., description="Application ID from Enable Banking"
     )
@@ -13,6 +19,23 @@ class Settings(BaseSettings):
         ..., description="Path to the RSA private key used for JWT signing"
     )
 
+    # Bank scope (required for Docker daemon mode)
+    bank: str | None = Field(
+        None,
+        description="Bank name for this container instance (e.g., 'Imagin')",
+    )
+    country: str | None = Field(
+        None,
+        description="Country code for this container instance (e.g., 'ES')",
+    )
+
+    # Daemon scheduling
+    sync_cron: str = Field(
+        "0 */6 * * *",
+        description="Cron expression for scheduled syncs (default: every 6 hours)",
+    )
+
+    # Storage paths
     database_path: str = Field("flowger.db", description="Path to the local SQLite database file")
 
     # CLI fallbacks — if not provided in the command line, these are loaded from
@@ -28,7 +51,9 @@ class Settings(BaseSettings):
         description="Default output file path for the export command",
     )
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore"
+    )
 
 
 def get_settings() -> Settings:
