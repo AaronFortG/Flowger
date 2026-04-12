@@ -25,10 +25,10 @@ def export(
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
     output = get_effective_value(output, settings.default_export_file)
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
+    # Resolve: CLI flag > Docker env (BANK/COUNTRY) > .env defaults
+    resolved_bank = get_effective_value(bank, settings.bank) or settings.default_bank
+    resolved_country = get_effective_value(country, settings.country) or settings.default_country
+    bank, country = validate_bank_country(resolved_bank, resolved_country)
     init_db(settings.database_path)
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)

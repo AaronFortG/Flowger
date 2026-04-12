@@ -30,10 +30,10 @@ def setup(
     You will be prompted to open a URL in your browser and paste back the code.
     """
     settings = get_settings()
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
+    # Resolve: CLI flag > Docker env (BANK/COUNTRY) > .env defaults
+    resolved_bank = get_effective_value(bank, settings.bank) or settings.default_bank
+    resolved_country = get_effective_value(country, settings.country) or settings.default_country
+    bank, country = validate_bank_country(resolved_bank, resolved_country)
     init_db(settings.database_path)
 
     with create_bank_provider(settings) as provider:

@@ -13,9 +13,10 @@ def login(
 ) -> None:
     """Generate an authorization URL to connect a bank account."""
     settings = get_settings()
-    bank, country = validate_bank_country(
-        bank or settings.default_bank, country or settings.default_country
-    )
+    # Resolve: CLI flag > Docker env (BANK/COUNTRY) > .env defaults
+    resolved_bank = bank or settings.bank or settings.default_bank
+    resolved_country = country or settings.country or settings.default_country
+    bank, country = validate_bank_country(resolved_bank, resolved_country)
     init_db(settings.database_path)
 
     with create_bank_provider(settings) as provider:

@@ -21,10 +21,10 @@ def sync(
 ) -> None:
     """Fetch transactions for all synced accounts and persist them locally."""
     settings = get_settings()
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
+    # Resolve: CLI flag > Docker env (BANK/COUNTRY) > .env defaults
+    resolved_bank = get_effective_value(bank, settings.bank) or settings.default_bank
+    resolved_country = get_effective_value(country, settings.country) or settings.default_country
+    bank, country = validate_bank_country(resolved_bank, resolved_country)
     init_db(settings.database_path)
 
     session_repo = SqliteSessionRepository(settings.database_path)
