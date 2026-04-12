@@ -60,7 +60,20 @@ def daemon(
 
     if len(existing_accounts) == 0:
         # First run — bootstrap via interactive setup
-        accounts = _run_setup(bank, country, settings)
+        try:
+            accounts = _run_setup(bank, country, settings)
+        except BankProviderError as e:
+            typer.secho(
+                f"\nSetup failed: {e}\n\n"
+                "This usually means your ENABLEBANKING_APP_ID or RSA private key is invalid\n"
+                "or mismatched. Check that:\n"
+                "  1. ENABLEBANKING_APP_ID matches your Enable Banking application.\n"
+                "  2. The RSA key mounted at /keys/private.pem is the one registered there.\n"
+                "  3. Your Enable Banking application is active and has AIS permissions.\n",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+
         if accounts is None:
             typer.secho(
                 "\nSetup was not completed. The daemon cannot start without accounts.",
