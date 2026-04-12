@@ -57,48 +57,48 @@ environment:
   # Optional: Sync schedule (default: every 6 hours)
   - SYNC_CRON=0 */6 * * *
 
-  # Optional: Storage path
+  # Optional: Storage paths (defaults shown)
   - DATABASE_PATH=/data/flowger.db
+
+  # Optional: File permissions — match your host user so exported files
+  # are owned by you. Run `id -u` / `id -g` on your host to find the values.
+  # - PUID=1000
+  # - PGID=1000
 ```
 
 The RSA key path defaults to `/keys/private.pem` inside the container, which matches the default volume mount (`./keys/private.pem:/keys/private.pem:ro`). You only need to set `ENABLEBANKING_KEY_PATH` if you use a different path.
 
 > **Tip:** To add a second bank, duplicate the service block with a different `BANK`, `COUNTRY`, and `SYNC_CRON`. All services share the same `db` volume so transactions from all banks land in one database.
 
-### 4. Start the daemon
+### 3. Start the daemon
 
 ```bash
 docker compose up -d
 ```
 
-If the RSA key or app ID is missing, the container will exit with a clear error message explaining how to fix it. Fix the issue and run `docker compose up -d` again.
-
-On the **first run** (once configuration is valid), the container detects that no accounts exist and starts setup. View the logs:
+On **first run**, the container detects no accounts and prints an authorization URL. View it with:
 
 ```bash
 docker compose logs -f flowger-imagin
 ```
 
-The logs will show an authorization URL and instructions. Open the URL in your browser, authenticate with your bank, then copy the `code` value from the redirected URL's address bar (`?code=...`). Complete setup by running:
+Open the URL, authenticate with your bank, then copy the `code` from the redirected URL (`?code=...`). Complete setup with:
 
 ```bash
 docker compose exec flowger-imagin flowger authorize --code <CODE>
 ```
 
-The daemon detects the new account automatically, runs an initial sync, and starts the scheduled loop.
+The daemon detects the account automatically, runs the initial sync, exports CSV files to `./exports/`, and starts the scheduled loop.
 
-After each sync, transactions are **automatically exported** to CSV files — one per account — in the `/exports/` directory (e.g., `/exports/acc-abc123.csv`). These files are accessible via the `./exports/` bind mount on your host.
-
-### 5. Export transactions
-
-In **daemon mode**, transactions are automatically exported to `/exports/<account_id>.csv` after every sync. Check your local `./exports/` directory.
-
-For **manual exports** (local Python or custom paths):
+### 4. Useful commands
 
 ```bash
-docker compose exec flowger-imagin flowger accounts
-docker compose exec flowger-imagin flowger export --account-id <ACCOUNT_UID> --output /exports/transactions.csv
+docker compose exec flowger-imagin flowger accounts               # List accounts
+docker compose exec flowger-imagin flowger sync                    # Manual sync
+docker compose exec flowger-imagin flowger export --account-id <ID>  # Manual export
 ```
+
+> **Tip:** If you prefer a shorter syntax, use the convenience script: `./fg setup`, `./fg sync`, `./fg export --account-id <ID>`.
 
 ---
 
@@ -353,6 +353,8 @@ docker compose exec flowger-imagin flowger accounts
 | `COUNTRY` | Yes | Country code for this container instance (e.g., `ES`) |
 | `SYNC_CRON` | No | Cron schedule for daemon sync (default: `0 */6 * * *`) |
 | `DATABASE_PATH` | No | SQLite DB path inside container (default: `/data/flowger.db`) |
+| `PUID` | No | Host user UID for file ownership (default: `10001`) |
+| `PGID` | No | Host group GID for file ownership (default: `10001`) |
 | `DEFAULT_BANK` | No | Fallback bank for local Python CLI (`.env` only) |
 | `DEFAULT_COUNTRY` | No | Fallback country for local Python CLI (`.env` only) |
 | `DEFAULT_REDIRECT_URL` | No | OAuth redirect URL |
