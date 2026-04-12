@@ -15,9 +15,12 @@
 services:
   flowger-imagin:
     build: .
+    stdin_open: true
+    tty: true
     environment:
       # ── Required: Enable Banking credentials ────────────────────────────
       - ENABLEBANKING_APP_ID=your_app_id_here        # ← replace with your app ID
+      # - ENABLEBANKING_KEY_PATH=/keys/private.pem   # ← only if using a different path
 
       # ── Required: Bank scope for this container ─────────────────────────
       - BANK=Imagin                                   # ← bank name
@@ -45,6 +48,8 @@ services:
   #
   # flowger-n26:
   #   build: .
+  #   stdin_open: true
+  #   tty: true
   #   environment:
   #     - ENABLEBANKING_APP_ID=your_app_id_here
   #     - BANK=N26

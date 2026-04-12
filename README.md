@@ -61,6 +61,8 @@ environment:
   - DATABASE_PATH=/data/flowger.db
 ```
 
+The RSA key path defaults to `/keys/private.pem` inside the container, which matches the default volume mount (`./keys/private.pem:/keys/private.pem:ro`). You only need to set `ENABLEBANKING_KEY_PATH` if you use a different path.
+
 > **Tip:** To add a second bank, duplicate the service block with a different `BANK`, `COUNTRY`, and `SYNC_CRON`. All services share the same `db` volume so transactions from all banks land in one database.
 
 ### 4. Start the daemon
@@ -69,13 +71,13 @@ environment:
 docker compose up -d
 ```
 
-On the **first run**, the container will print an authorization URL. View the logs:
+On the **first run**, the container detects that no accounts exist and starts an interactive setup. View the logs:
 
 ```bash
 docker compose logs -f flowger-imagin
 ```
 
-Open the URL in your browser, authenticate with your bank, then paste the `code` from the redirect URL back into the log prompt. After setup completes, the daemon starts automatically.
+The logs will show an authorization URL. Open it in your browser, authenticate with your bank, then copy the `code` value from the redirected URL's address bar (`?code=...`). Paste the code back into the interactive prompt in the logs. After setup completes, the daemon starts automatically and syncs on your configured schedule.
 
 ### 5. Export transactions
 
@@ -334,7 +336,7 @@ docker compose exec flowger-imagin flowger accounts
 | Variable | Required | Description |
 |---|---|---|
 | `ENABLEBANKING_APP_ID` | Yes | Your Enable Banking app ID |
-| `ENABLEBANKING_KEY_PATH` | Yes | Path to RSA private key (PEM) inside the container |
+| `ENABLEBANKING_KEY_PATH` | No | Path to RSA private key (PEM) inside the container (default: `/keys/private.pem`) |
 | `BANK` | Yes | Bank name for this container instance (e.g., `Imagin`) |
 | `COUNTRY` | Yes | Country code for this container instance (e.g., `ES`) |
 | `SYNC_CRON` | No | Cron schedule for daemon sync (default: `0 */6 * * *`) |

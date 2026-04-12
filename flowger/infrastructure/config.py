@@ -16,7 +16,8 @@ class Settings(BaseSettings):
         ..., description="Application ID from Enable Banking"
     )
     enablebanking_key_path: str = Field(
-        ..., description="Path to the RSA private key used for JWT signing"
+        "/keys/private.pem",
+        description="Path to the RSA private key used for JWT signing",
     )
 
     # Bank scope (required for Docker daemon mode)
