@@ -71,22 +71,34 @@ The RSA key path defaults to `/keys/private.pem` inside the container, which mat
 docker compose up -d
 ```
 
-On the **first run**, the container detects that no accounts exist and starts an interactive setup. View the logs:
+If the RSA key or app ID is missing, the container will exit with a clear error message explaining how to fix it. Fix the issue and run `docker compose up -d` again.
+
+On the **first run** (once configuration is valid), the container detects that no accounts exist and starts setup. View the logs:
 
 ```bash
 docker compose logs -f flowger-imagin
 ```
 
-The logs will show an authorization URL. Open it in your browser, authenticate with your bank, then copy the `code` value from the redirected URL's address bar (`?code=...`). Paste the code back into the interactive prompt in the logs. After setup completes, the daemon starts automatically and syncs on your configured schedule.
+The logs will show an authorization URL and instructions. Open the URL in your browser, authenticate with your bank, then copy the `code` value from the redirected URL's address bar (`?code=...`). Complete setup by running:
+
+```bash
+docker compose exec flowger-imagin flowger authorize --code <CODE>
+```
+
+The daemon detects the new account automatically, runs an initial sync, and starts the scheduled loop.
+
+After each sync, transactions are **automatically exported** to CSV files — one per account — in the `/exports/` directory (e.g., `/exports/acc-abc123.csv`). These files are accessible via the `./exports/` bind mount on your host.
 
 ### 5. Export transactions
+
+In **daemon mode**, transactions are automatically exported to `/exports/<account_id>.csv` after every sync. Check your local `./exports/` directory.
+
+For **manual exports** (local Python or custom paths):
 
 ```bash
 docker compose exec flowger-imagin flowger accounts
 docker compose exec flowger-imagin flowger export --account-id <ACCOUNT_UID> --output /exports/transactions.csv
 ```
-
-Exported CSV files are written to your local `./exports/` directory.
 
 ---
 
