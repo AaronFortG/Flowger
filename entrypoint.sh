@@ -1,10 +1,28 @@
 #!/bin/sh
 set -e
 
+# ── User / group configuration ─────────────────────────────────────────────
+# Allow users to override UID/GID via environment variables (Docker convention).
+RUN_UID="${PUID:-10001}"
+RUN_GID="${PGID:-10001}"
+
+# Create the group if it doesn't already exist
+if ! getent group appgroup > /dev/null 2>&1; then
+  groupadd -g "$RUN_GID" appgroup 2>/dev/null || true
+fi
+
+# Create or update the appuser with the desired UID/GID
+if ! id appuser > /dev/null 2>&1; then
+  useradd -u "$RUN_UID" -g appgroup -M -s /bin/sh appuser
+else
+  # User exists — update UID/GID if they differ from the image defaults
+  usermod -u "$RUN_UID" -g appgroup appuser 2>/dev/null || true
+fi
+
 # ── Fix bind-mount permissions ──────────────────────────────────────────────
-# Host bind mounts override image ownership. Ensure appuser (UID 10001) can
-# write to /data and /exports before handing off.
-chown -R 10001:10001 /data /exports 2>/dev/null || true
+# Host bind mounts override image ownership. Ensure the runtime user owns
+# /data and /exports so it can write the SQLite DB and exported CSVs.
+chown -R "$RUN_UID:$RUN_GID" /data /exports 2>/dev/null || true
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────
 # Default key path can be overridden via ENABLEBANKING_KEY_PATH env var.
@@ -39,6 +57,6 @@ if [ -z "$ENABLEBANKING_APP_ID" ]; then
   exit 1
 fi
 
-# ── Drop to appuser and hand off to the real command ────────────────────────
+# ── Drop privileges and hand off to the real command ────────────────────────
 # runuser is part of util-linux (Essential: yes on Debian).
 exec runuser -u appuser -- "$@"

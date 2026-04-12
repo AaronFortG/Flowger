@@ -33,6 +33,12 @@ services:
       # ── Optional: Storage paths (defaults shown) ────────────────────────
       - DATABASE_PATH=/data/flowger.db
 
+      # ── Optional: File permissions ────────────────────────────────────────
+      # Set to match your host user so exported files are owned by you.
+      # Run `id -u` and `id -g` on your host to find your values.
+      # - PUID=1000
+      # - PGID=1000
+
     volumes:
       - db:/data
       - ./keys/private.pem:/keys/private.pem:ro
@@ -55,6 +61,8 @@ services:
   #     - BANK=N26
   #     - COUNTRY=DE
   #     - SYNC_CRON=0 */6 * * *
+  #     # - PUID=1000
+  #     # - PGID=1000
   #   volumes:
   #     - db:/data
   #     - ./keys/private.pem:/keys/private.pem:ro
