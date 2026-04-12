@@ -13,6 +13,8 @@ _MODULE = "flowger.entrypoints.cli.commands.login"
 def mock_settings(tmp_path: Path) -> MagicMock:
     settings = MagicMock()
     settings.database_path = str(tmp_path / "test.db")
+    settings.bank = None
+    settings.country = None
     settings.default_bank = "Imagin"
     settings.default_country = "ES"
     settings.default_redirect_url = "https://auth"
