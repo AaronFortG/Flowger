@@ -1,3 +1,4 @@
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -22,6 +23,9 @@ from flowger.infrastructure.sqlite import (
     SqliteTransactionRepository,
     init_db,
 )
+
+# How long to wait between polling checks when no TTY is available (seconds)
+_POLL_INTERVAL = 10
 
 
 def daemon(
@@ -123,6 +127,10 @@ def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | N
     """
     Interactive one-time setup: authorize a bank account and run an initial sync.
     Returns the list of accounts on success, or None if the user aborted.
+
+    When stdin is not a TTY (detached Docker mode), prints the auth URL and
+    polls the database until accounts appear. The user authorizes via:
+        docker compose exec <service> flowger authorize --code <CODE>
     """
     typer.secho(
         f"\nNo accounts found for {bank} ({country}). Starting first-time setup...\n",
@@ -146,85 +154,160 @@ def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | N
             "\nCopy the value of the 'code' parameter from the address bar.\n"
         )
 
-        # Step 2 & 3: Exchange code with retries
-        account_repo = SqliteAccountRepository(settings.database_path)
-        session_repo = SqliteSessionRepository(settings.database_path)
+        # Step 2 & 3: Exchange code — interactive if TTY, polling if not
+        if sys.stdin.isatty():
+            return _run_setup_interactive(bank, country, settings, provider)
+        else:
+            return _run_setup_non_interactive(bank, country, settings, provider)
 
-        authorize_use_case = AuthorizeSessionUseCase(
-            provider=provider,
-            session_repository=session_repo,
-            account_repository=account_repo,
+
+def _run_setup_interactive(
+    bank: str, country: str, settings: Settings, provider: object
+) -> list[Account] | None:
+    """Interactive setup using typer.prompt (requires TTY)."""
+    account_repo = SqliteAccountRepository(settings.database_path)
+    session_repo = SqliteSessionRepository(settings.database_path)
+
+    authorize_use_case = AuthorizeSessionUseCase(
+        provider=provider,  # type: ignore[arg-type]
+        session_repository=session_repo,
+        account_repository=account_repo,
+    )
+
+    session: BankSession
+    accounts: list[Account] = []
+
+    while True:
+        code = typer.prompt(
+            "\nPaste your authorization code here (or leave empty to exit)",
+            default="",
+            show_default=False,
         )
+        if len(code.strip()) == 0:
+            typer.echo("Setup aborted by user.")
+            return None
 
-        session: BankSession
-        accounts: list[Account] = []
-
-        while True:
-            code = typer.prompt(
-                "\nPaste your authorization code here (or leave empty to exit)",
-                default="",
-                show_default=False,
+        try:
+            typer.echo("\nExchanging code for session...")
+            session, accounts = authorize_use_case.execute(
+                code=code.strip(), bank_name=bank, country=country
             )
-            if len(code.strip()) == 0:
-                typer.echo("Setup aborted by user.")
+            break  # Success!
+        except BankProviderError as e:
+            typer.secho(
+                f"\nError: Authorization failed ({e}).\n"
+                "It's likely the code was pasted incorrectly or has expired.",
+                fg=typer.colors.RED,
+            )
+            if typer.confirm("Would you like to try again?") is False:
                 return None
 
-            try:
-                typer.echo("\nExchanging code for session...")
-                session, accounts = authorize_use_case.execute(
-                    code=code.strip(), bank_name=bank, country=country
-                )
-                break  # Success!
-            except BankProviderError as e:
-                typer.secho(
-                    f"\nError: Authorization failed ({e}).\n"
-                    "It's likely the code was pasted incorrectly or has expired.",
-                    fg=typer.colors.RED,
-                )
-                if typer.confirm("Would you like to try again?") is False:
-                    return None
+    return _finalize_setup(session, accounts, settings, provider)
 
-        typer.secho(
-            f"✓ Session authorized. {len(accounts)} account(s) saved.",
-            fg=typer.colors.GREEN,
-        )
 
-        # Step 4: Run initial sync
-        typer.echo("\nRunning initial transaction sync...")
-        transaction_repo = SqliteTransactionRepository(settings.database_path)
-        sync_use_case = SyncTransactionsUseCase(
-            provider=provider,
-            account_repository=account_repo,
-            transaction_repository=transaction_repo,
-        )
-        failures = sync_use_case.execute(session_id=session.session_id, accounts=accounts)
+def _run_setup_non_interactive(
+    bank: str, country: str, settings: Settings, provider: object
+) -> list[Account] | None:
+    """
+    Non-interactive setup (detached Docker mode).
+    Prints instructions and polls the database until accounts appear.
+    """
+    account_repo = SqliteAccountRepository(settings.database_path)
+    session_repo = SqliteSessionRepository(settings.database_path)
 
-        if len(failures) > 0:
+    typer.secho(
+        "\nThis container is running in detached mode and cannot accept interactive input.",
+        fg=typer.colors.YELLOW,
+    )
+    typer.echo("\nTo complete setup, run this command in another terminal:\n")
+    typer.secho(
+        f"  docker compose exec flowger-{bank.lower()} flowger authorize --code <CODE>",
+        fg=typer.colors.CYAN,
+    )
+    typer.echo(
+        "\nThe daemon will detect the authorized account automatically and start syncing.\n"
+    )
+
+    # Poll until accounts appear or we're stopped
+    while True:
+        accounts = account_repo.get_accounts(bank_name=bank, country=country)
+        if len(accounts) > 0:
             typer.secho(
-                f"⚠ Initial sync completed with {len(failures)} failure(s).",
-                fg=typer.colors.YELLOW,
-            )
-        else:
-            typer.secho("✓ Initial sync complete.", fg=typer.colors.GREEN)
-
-        # Step 5: Print account summary
-        typer.echo("\nYour authorized accounts:\n")
-        typer.echo(
-            f"{'Bank':<15} {'Country':<8} {'ID':<40} {'IBAN':<26} {'Name':<20} Currency"
-        )
-        typer.echo("-" * 120)
-        for acc in accounts:
-            typer.echo(
-                f"{acc.bank_name:<15} {acc.country:<8} {acc.id:<40} "
-                f"{acc.iban:<26} {acc.name:<20} {acc.currency}"
+                "✓ Account detected. Proceeding with initial sync...\n",
+                fg=typer.colors.GREEN,
             )
 
+            # Get the session that was created by the authorize command
+            session = session_repo.get_latest_session(bank_name=bank, country=country)
+            if session is not None:
+                with create_bank_provider(settings) as fresh_provider:
+                    transaction_repo = SqliteTransactionRepository(settings.database_path)
+                    sync_use_case = SyncTransactionsUseCase(
+                        provider=fresh_provider,
+                        account_repository=account_repo,
+                        transaction_repository=transaction_repo,
+                    )
+                    failures = sync_use_case.execute(
+                        session_id=session.session_id, accounts=accounts
+                    )
+                    if len(failures) > 0:
+                        typer.secho(
+                            f"⚠ Initial sync completed with {len(failures)} failure(s).",
+                            fg=typer.colors.YELLOW,
+                        )
+                    else:
+                        typer.secho("✓ Initial sync complete.", fg=typer.colors.GREEN)
+            return accounts
+
+        time.sleep(_POLL_INTERVAL)
+        typer.echo("  Waiting for authorization...")
+
+
+def _finalize_setup(
+    session: BankSession,
+    accounts: list[Account],
+    settings: Settings,
+    provider: object,
+) -> list[Account] | None:
+    """Run initial sync and print account summary. Called after code exchange succeeds."""
+    account_repo = SqliteAccountRepository(settings.database_path)
+    transaction_repo = SqliteTransactionRepository(settings.database_path)
+
+    # Step 4: Run initial sync
+    typer.echo("\nRunning initial transaction sync...")
+    sync_use_case = SyncTransactionsUseCase(
+        provider=provider,  # type: ignore[arg-type]
+        account_repository=account_repo,
+        transaction_repository=transaction_repo,
+    )
+    failures = sync_use_case.execute(session_id=session.session_id, accounts=accounts)
+
+    if len(failures) > 0:
         typer.secho(
-            "\n✓ Setup complete. Daemon will now start syncing on schedule.",
-            fg=typer.colors.GREEN,
+            f"⚠ Initial sync completed with {len(failures)} failure(s).",
+            fg=typer.colors.YELLOW,
+        )
+    else:
+        typer.secho("✓ Initial sync complete.", fg=typer.colors.GREEN)
+
+    # Step 5: Print account summary
+    typer.echo("\nYour authorized accounts:\n")
+    typer.echo(
+        f"{'Bank':<15} {'Country':<8} {'ID':<40} {'IBAN':<26} {'Name':<20} Currency"
+    )
+    typer.echo("-" * 120)
+    for acc in accounts:
+        typer.echo(
+            f"{acc.bank_name:<15} {acc.country:<8} {acc.id:<40} "
+            f"{acc.iban:<26} {acc.name:<20} {acc.currency}"
         )
 
-        return accounts
+    typer.secho(
+        "\n✓ Setup complete. Daemon will now start syncing on schedule.",
+        fg=typer.colors.GREEN,
+    )
+
+    return accounts
 
 
 def _run_sync(bank: str, country: str, settings: Settings) -> bool:
