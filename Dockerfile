@@ -37,10 +37,14 @@ COPY --from=builder /app/.venv /app/.venv
 COPY flowger/ ./flowger/
 COPY pyproject.toml ./
 
+# Copy entrypoint validation script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create a non-root user for security (UID 10001)
 RUN useradd --create-home --uid 10001 appuser && \
     mkdir -p /data /exports /keys && \
-    chown -R appuser:appuser /app /data /exports /keys
+    chown -R appuser:appuser /app /data /exports /keys /entrypoint.sh
 
 USER appuser
 
@@ -55,5 +59,5 @@ ENV PYTHONUNBUFFERED=1
 # Persistence volumes
 VOLUME ["/data", "/exports", "/keys"]
 
-ENTRYPOINT ["flowger"]
+ENTRYPOINT ["/entrypoint.sh", "flowger"]
 CMD ["daemon"]
