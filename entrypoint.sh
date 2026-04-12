@@ -40,4 +40,5 @@ if [ -z "$ENABLEBANKING_APP_ID" ]; then
 fi
 
 # ── Drop to appuser and hand off to the real command ────────────────────────
-exec su-exec 10001:10001 "$@"
+# runuser is part of util-linux (Essential: yes on Debian).
+exec runuser -u appuser -- "$@"

@@ -37,14 +37,9 @@ COPY --from=builder /app/.venv /app/.venv
 COPY flowger/ ./flowger/
 COPY pyproject.toml ./
 
-# Copy entrypoint validation script
+# Copy entrypoint validation script and set permissions
 COPY entrypoint.sh /entrypoint.sh
-
-# Install su-exec (tiny binary to drop root privileges) and set permissions
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends su-exec && \
-    rm -rf /var/lib/apt/lists/* && \
-    chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Create a non-root user for security (UID 10001)
 RUN useradd --create-home --uid 10001 appuser && \
