@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+# ── Fix bind-mount permissions ──────────────────────────────────────────────
+# Host bind mounts override image ownership. Ensure appuser (UID 10001) can
+# write to /data and /exports before handing off.
+chown -R 10001:10001 /data /exports 2>/dev/null || true
+
 # ── Pre-flight checks ─────────────────────────────────────────────────────
 # Default key path can be overridden via ENABLEBANKING_KEY_PATH env var.
 KEY_PATH="${ENABLEBANKING_KEY_PATH:-/keys/private.pem}"
@@ -34,5 +39,5 @@ if [ -z "$ENABLEBANKING_APP_ID" ]; then
   exit 1
 fi
 
-# ── Hand off to the real command ──────────────────────────────────────────
-exec "$@"
+# ── Drop to appuser and hand off to the real command ────────────────────────
+exec su-exec 10001:10001 "$@"

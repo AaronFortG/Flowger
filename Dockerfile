@@ -39,14 +39,21 @@ COPY pyproject.toml ./
 
 # Copy entrypoint validation script
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+
+# Install su-exec (tiny binary to drop root privileges) and set permissions
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends su-exec && \
+    rm -rf /var/lib/apt/lists/* && \
+    chmod +x /entrypoint.sh
 
 # Create a non-root user for security (UID 10001)
 RUN useradd --create-home --uid 10001 appuser && \
     mkdir -p /data /exports /keys && \
-    chown -R appuser:appuser /app /data /exports /keys /entrypoint.sh
+    chown -R appuser:appuser /app /entrypoint.sh
 
-USER appuser
+# Note: /data, /exports, /keys are bind-mounted from the host, so ownership
+# is set at runtime by the entrypoint script (which runs as root and then
+# drops to appuser).
 
 # Put the venv on PATH so `flowger` CLI script resolves correctly
 ENV PATH="/app/.venv/bin:$PATH"
@@ -56,8 +63,8 @@ ENV DATABASE_PATH=/data/flowger.db
 ENV DEFAULT_EXPORT_FILE=/exports/transactions.csv
 ENV PYTHONUNBUFFERED=1
 
-# Persistence volumes
-VOLUME ["/data", "/exports", "/keys"]
+# No USER directive — entrypoint.sh runs as root, fixes permissions, then
+# drops to appuser before exec'ing the real command.
 
 ENTRYPOINT ["/entrypoint.sh", "flowger"]
 CMD ["daemon"]
