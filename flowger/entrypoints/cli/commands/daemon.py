@@ -48,7 +48,10 @@ def daemon(
     bank, country = resolve_bank_country(settings, bank, country)
 
     # Resolve cron: CLI flag > settings.sync_cron (Docker env)
-    resolved_cron = get_effective_value(cron, settings.sync_cron) or "0 */6 * * *"
+    # Normalise settings.sync_cron so a whitespace-only SYNC_CRON env var falls
+    # through to the hardcoded default rather than failing cron validation.
+    effective_cron = get_effective_value(settings.sync_cron, None)
+    resolved_cron = get_effective_value(cron, effective_cron) or "0 */6 * * *"
     if croniter.is_valid(resolved_cron) is False:
         typer.secho(
             f"Error: Invalid cron expression '{resolved_cron}'", fg=typer.colors.RED

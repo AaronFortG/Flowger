@@ -45,8 +45,12 @@ def resolve_bank_country(
     country_opt: str | None,
 ) -> tuple[str, str]:
     """Resolve and validate bank/country using CLI flag > Docker env > .env default precedence."""
-    resolved_bank = get_effective_value(bank_opt, settings.bank) or settings.default_bank
-    resolved_country = get_effective_value(country_opt, settings.country) or settings.default_country
+    # Normalise settings.bank/country first — a whitespace-only env var must be
+    # treated as absent, otherwise it shadows settings.default_bank/country.
+    effective_bank = get_effective_value(settings.bank, None)
+    effective_country = get_effective_value(settings.country, None)
+    resolved_bank = get_effective_value(bank_opt, effective_bank) or settings.default_bank
+    resolved_country = get_effective_value(country_opt, effective_country) or settings.default_country
     return validate_bank_country(resolved_bank, resolved_country)
 
 
