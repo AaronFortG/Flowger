@@ -51,9 +51,13 @@ ACTUAL_RUN_UID="$(id -u appuser)"
 ACTUAL_RUN_GID="$(id -g appuser)"
 
 # ── Fix bind-mount permissions ──────────────────────────────────────────────
-# Host bind mounts override image ownership. Ensure the runtime user owns
-# /data and /exports so it can write the SQLite DB and exported CSVs.
-chown -R "$ACTUAL_RUN_UID:$ACTUAL_RUN_GID" /data /exports 2>/dev/null || true
+# Chown only the top-level directories and only when the owner already differs.
+# Avoiding a recursive walk keeps startup fast even as /data and /exports grow.
+for dir in /data /exports; do
+  if [ -e "$dir" ] && [ "$(stat -c '%u:%g' "$dir" 2>/dev/null || true)" != "$ACTUAL_RUN_UID:$ACTUAL_RUN_GID" ]; then
+    chown "$ACTUAL_RUN_UID:$ACTUAL_RUN_GID" "$dir" 2>/dev/null || true
+  fi
+done
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────
 # Default key path can be overridden via ENABLEBANKING_KEY_PATH env var.
@@ -77,13 +81,13 @@ if [ ! -f "$KEY_PATH" ]; then
   exit 1
 fi
 
-if [ ! -r "$KEY_PATH" ]; then
+if ! runuser -u appuser -- test -r "$KEY_PATH" 2>/dev/null; then
   echo ""
-  echo "  ERROR: RSA private key exists at $KEY_PATH but is not readable."
+  echo "  ERROR: RSA private key exists at $KEY_PATH but is not readable by the runtime user."
   echo ""
-  echo "  The file permissions may be too restrictive for the runtime user."
+  echo "  The file permissions may be too restrictive for appuser (UID $ACTUAL_RUN_UID)."
   echo "  Fix the permissions on your host (e.g., chmod 644 keys/private.pem),"
-  echo "  or set PUID/PGID to match the file owner."
+  echo "  or set PUID to match the file owner."
   echo ""
   exit 1
 fi

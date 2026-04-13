@@ -24,6 +24,12 @@ from flowger.infrastructure.sqlite import (
     init_db,
 )
 
+
+def _is_container() -> bool:
+    """Return True when running inside a Docker container."""
+    return os.path.exists("/.dockerenv")
+
+
 # Seconds between polling checks during non-interactive setup
 _POLL_INTERVAL = 10
 
@@ -135,8 +141,9 @@ def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | N
         fg=typer.colors.YELLOW,
     )
 
+    # Step 1: Generate auth URL — scope the provider to just this call so the
+    # HTTP client is not held open during the potentially long polling wait.
     with create_bank_provider(settings) as provider:
-        # Step 1: Generate auth URL
         random_state = uuid.uuid4().hex
         url = provider.start_authorization(
             bank_name=bank,
@@ -145,86 +152,86 @@ def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | N
             state=random_state,
         )
 
-        typer.echo("Open the following URL in your browser to authenticate:\n")
-        typer.secho(url, fg=typer.colors.CYAN)
-        typer.echo(
-            "\nAfter logging in, you will be redirected to a URL containing '?code=...'."
-            "\nCopy the value of the 'code' parameter from the address bar.\n"
-        )
+    typer.echo("Open the following URL in your browser to authenticate:\n")
+    typer.secho(url, fg=typer.colors.CYAN)
+    typer.echo(
+        "\nAfter logging in, you will be redirected to a URL containing '?code=...'."
+        "\nCopy the value of the 'code' parameter from the address bar.\n"
+    )
 
-        # Step 2: Authorize via docker compose exec — poll until accounts appear
-        typer.echo("To complete setup, run this command in another terminal:\n")
-        typer.secho(
-            "  docker compose exec --user appuser <SERVICE_NAME> flowger authorize --code <CODE>",
-            fg=typer.colors.CYAN,
-        )
-        typer.echo(
-            "\nReplace <SERVICE_NAME> with your Compose service name "
-            "(e.g. run `docker compose ps` to find it).\n"
-            "The daemon will detect the authorized account automatically and start syncing.\n"
-        )
+    # Step 2: Authorize via docker compose exec — poll until accounts appear
+    typer.echo("To complete setup, run this command in another terminal:\n")
+    typer.secho(
+        "  docker compose exec --user appuser <SERVICE_NAME> flowger authorize --code <CODE>",
+        fg=typer.colors.CYAN,
+    )
+    typer.echo(
+        "\nReplace <SERVICE_NAME> with your Compose service name "
+        "(e.g. run `docker compose ps` to find it).\n"
+        "The daemon will detect the authorized account automatically and start syncing.\n"
+    )
 
-        account_repo = SqliteAccountRepository(settings.database_path)
-        session_repo = SqliteSessionRepository(settings.database_path)
+    account_repo = SqliteAccountRepository(settings.database_path)
+    session_repo = SqliteSessionRepository(settings.database_path)
 
-        try:
-            while True:
-                accounts = account_repo.get_accounts(bank_name=bank, country=country)
-                if len(accounts) > 0:
-                    typer.secho(
-                        "✓ Account detected. Proceeding with initial sync...\n",
-                        fg=typer.colors.GREEN,
-                    )
-                    break
-
-                time.sleep(_POLL_INTERVAL)
-                typer.echo("  Waiting for authorization...")
-        except KeyboardInterrupt:
-            typer.secho(
-                "\nSetup cancelled while waiting for authorization.",
-                fg=typer.colors.YELLOW,
-            )
-            return None
-
-        # Step 3: Run initial sync once accounts appear
-        session = session_repo.get_latest_session(bank_name=bank, country=country)
-        if session is not None:
-            with create_bank_provider(settings) as fresh_provider:
-                transaction_repo = SqliteTransactionRepository(settings.database_path)
-                sync_use_case = SyncTransactionsUseCase(
-                    provider=fresh_provider,
-                    account_repository=account_repo,
-                    transaction_repository=transaction_repo,
+    try:
+        while True:
+            accounts = account_repo.get_accounts(bank_name=bank, country=country)
+            if len(accounts) > 0:
+                typer.secho(
+                    "\u2713 Account detected. Proceeding with initial sync...\n",
+                    fg=typer.colors.GREEN,
                 )
-                failures = sync_use_case.execute(
-                    session_id=session.session_id, accounts=accounts
-                )
-                if len(failures) > 0:
-                    typer.secho(
-                        f"⚠ Initial sync completed with {len(failures)} failure(s).",
-                        fg=typer.colors.YELLOW,
-                    )
-                else:
-                    typer.secho("✓ Initial sync complete.", fg=typer.colors.GREEN)
+                break
 
-        # Step 4: Print account summary
-        typer.echo("\nYour authorized accounts:\n")
-        typer.echo(
-            f"{'Bank':<15} {'Country':<8} {'ID':<40} {'IBAN':<26} {'Name':<20} Currency"
-        )
-        typer.echo("-" * 120)
-        for acc in accounts:
-            typer.echo(
-                f"{acc.bank_name:<15} {acc.country:<8} {acc.id:<40} "
-                f"{acc.iban:<26} {acc.name:<20} {acc.currency}"
-            )
-
+            time.sleep(_POLL_INTERVAL)
+            typer.echo("  Waiting for authorization...")
+    except KeyboardInterrupt:
         typer.secho(
-            "\n✓ Setup complete. Daemon will now start syncing on schedule.",
-            fg=typer.colors.GREEN,
+            "\nSetup cancelled while waiting for authorization.",
+            fg=typer.colors.YELLOW,
+        )
+        return None
+
+    # Step 3: Run initial sync once accounts appear
+    session = session_repo.get_latest_session(bank_name=bank, country=country)
+    if session is not None:
+        with create_bank_provider(settings) as fresh_provider:
+            transaction_repo = SqliteTransactionRepository(settings.database_path)
+            sync_use_case = SyncTransactionsUseCase(
+                provider=fresh_provider,
+                account_repository=account_repo,
+                transaction_repository=transaction_repo,
+            )
+            failures = sync_use_case.execute(
+                session_id=session.session_id, accounts=accounts
+            )
+            if len(failures) > 0:
+                typer.secho(
+                    f"\u26a0 Initial sync completed with {len(failures)} failure(s).",
+                    fg=typer.colors.YELLOW,
+                )
+            else:
+                typer.secho("\u2713 Initial sync complete.", fg=typer.colors.GREEN)
+
+    # Step 4: Print account summary
+    typer.echo("\nYour authorized accounts:\n")
+    typer.echo(
+        f"{'Bank':<15} {'Country':<8} {'ID':<40} {'IBAN':<26} {'Name':<20} Currency"
+    )
+    typer.echo("-" * 120)
+    for acc in accounts:
+        typer.echo(
+            f"{acc.bank_name:<15} {acc.country:<8} {acc.id:<40} "
+            f"{acc.iban:<26} {acc.name:<20} {acc.currency}"
         )
 
-        return accounts
+    typer.secho(
+        "\n\u2713 Setup complete. Daemon will now start syncing on schedule.",
+        fg=typer.colors.GREEN,
+    )
+
+    return accounts
 
 
 def _run_sync(bank: str, country: str, settings: Settings) -> bool:
@@ -295,8 +302,9 @@ def _run_export(
             output_path=output_path,
         )
         if count > 0:
+            suffix = " (container path)" if _is_container() else ""
             typer.secho(
-                f"  Exported {count} transaction(s) → {output_path} (container path)",
+                f"  Exported {count} transaction(s) \u2192 {output_path}{suffix}",
                 fg=typer.colors.GREEN,
             )
         else:
