@@ -1,3 +1,4 @@
+import os
 from typing import overload
 
 import typer
@@ -12,6 +13,11 @@ def create_bank_provider(settings: Settings) -> EnableBankingProvider:
         app_id=settings.enablebanking_app_id,
         private_key_path=settings.enablebanking_key_path,
     )
+
+
+def is_container() -> bool:
+    """Return True when running inside a Docker container."""
+    return os.path.exists("/.dockerenv")
 
 
 @overload
@@ -31,6 +37,17 @@ def get_effective_value(val: str | None, default: str | None) -> str | None:
     if val is not None and len(val.strip()) > 0:
         return val.strip()
     return default
+
+
+def resolve_bank_country(
+    settings: Settings,
+    bank_opt: str | None,
+    country_opt: str | None,
+) -> tuple[str, str]:
+    """Resolve and validate bank/country using CLI flag > Docker env > .env default precedence."""
+    resolved_bank = get_effective_value(bank_opt, settings.bank) or settings.default_bank
+    resolved_country = get_effective_value(country_opt, settings.country) or settings.default_country
+    return validate_bank_country(resolved_bank, resolved_country)
 
 
 def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, str]:

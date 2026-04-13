@@ -28,7 +28,7 @@ Flowger runs as a Docker daemon. You only need to set a few environment variable
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/flowger.git
+git clone https://github.com/aaronfortg/flowger.git
 cd flowger
 ```
 
@@ -345,20 +345,20 @@ docker compose exec --user appuser flowger-imagin flowger accounts
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `ENABLEBANKING_APP_ID` | Yes | Your Enable Banking app ID |
-| `ENABLEBANKING_KEY_PATH` | No | Path to RSA private key (PEM) inside the container (default: `/keys/private.pem`) |
-| `BANK` | Yes | Bank name for this container instance (e.g., `Imagin`) |
-| `COUNTRY` | Yes | Country code for this container instance (e.g., `ES`) |
-| `SYNC_CRON` | No | Cron schedule for daemon sync (default: `0 */6 * * *`) |
-| `DATABASE_PATH` | No | SQLite DB path inside container (default: `/data/flowger.db`) |
-| `PUID` | No | Host user UID for file ownership (default: `10001`) |
-| `PGID` | No | Host group GID for file ownership (default: `10001`) |
-| `DEFAULT_BANK` | No | Fallback bank for local Python CLI (`.env` only) |
-| `DEFAULT_COUNTRY` | No | Fallback country for local Python CLI (`.env` only) |
-| `DEFAULT_REDIRECT_URL` | No | OAuth redirect URL |
-| `DEFAULT_EXPORT_FILE` | No | Default CSV export path |
+| Variable | Docker / daemon | Local Python CLI | Description |
+|---|---|---|---|
+| `ENABLEBANKING_APP_ID` | Required | Required | Your Enable Banking app ID |
+| `ENABLEBANKING_KEY_PATH` | No (default: `/keys/private.pem`) | **Required** | Path to RSA private key (PEM). Set in `.env` for local runs; the Dockerfile sets the container default. |
+| `BANK` | **Required** | No | Bank name. Required when running the daemon via Docker. For local CLI, pass `--bank` or use `DEFAULT_BANK`. |
+| `COUNTRY` | **Required** | No | Country code. Required when running the daemon via Docker. For local CLI, pass `--country` or use `DEFAULT_COUNTRY`. |
+| `SYNC_CRON` | No | No | Cron schedule for daemon sync (default: `0 */6 * * *`) |
+| `DATABASE_PATH` | No | No | SQLite DB path (default: `/data/flowger.db` in Docker) |
+| `PUID` | No | No | Host user UID for file ownership (default: `10001`) |
+| `PGID` | No | No | Host group GID for file ownership (default: `10001`) |
+| `DEFAULT_BANK` | No | No | Fallback bank for local Python CLI (`.env` only) |
+| `DEFAULT_COUNTRY` | No | No | Fallback country for local Python CLI (`.env` only) |
+| `DEFAULT_REDIRECT_URL` | No | No | OAuth redirect URL |
+| `DEFAULT_EXPORT_FILE` | No | No | Default CSV export path (directory used for daemon auto-export) |
 
 ---
 

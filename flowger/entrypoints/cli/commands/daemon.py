@@ -13,7 +13,8 @@ from flowger.domain.exceptions import BankProviderError
 from flowger.entrypoints.cli.helpers import (
     create_bank_provider,
     get_effective_value,
-    validate_bank_country,
+    is_container,
+    resolve_bank_country,
 )
 from flowger.infrastructure.config import Settings, get_settings
 from flowger.infrastructure.exporters.csv import ActualCsvExporter
@@ -24,10 +25,6 @@ from flowger.infrastructure.sqlite import (
     init_db,
 )
 
-
-def _is_container() -> bool:
-    """Return True when running inside a Docker container."""
-    return os.path.exists("/.dockerenv")
 
 
 # Seconds between polling checks during non-interactive setup
@@ -48,10 +45,7 @@ def daemon(
     """
     settings = get_settings()
 
-    # Resolve bank/country: CLI flag > settings.bank (Docker env) > settings.default_bank (.env)
-    resolved_bank = get_effective_value(bank, settings.bank) or settings.default_bank
-    resolved_country = get_effective_value(country, settings.country) or settings.default_country
-    bank, country = validate_bank_country(resolved_bank, resolved_country)
+    bank, country = resolve_bank_country(settings, bank, country)
 
     # Resolve cron: CLI flag > settings.sync_cron (Docker env)
     resolved_cron = get_effective_value(cron, settings.sync_cron) or "0 */6 * * *"
@@ -302,7 +296,7 @@ def _run_export(
             output_path=output_path,
         )
         if count > 0:
-            suffix = " (container path)" if _is_container() else ""
+            suffix = " (container path)" if is_container() else ""
             typer.secho(
                 f"  Exported {count} transaction(s) \u2192 {output_path}{suffix}",
                 fg=typer.colors.GREEN,

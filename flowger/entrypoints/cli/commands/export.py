@@ -1,9 +1,11 @@
-import os
-
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
-from flowger.entrypoints.cli.helpers import get_effective_value, validate_bank_country
+from flowger.entrypoints.cli.helpers import (
+    get_effective_value,
+    is_container,
+    resolve_bank_country,
+)
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.exporters.csv import ActualCsvExporter
 from flowger.infrastructure.sqlite import (
@@ -11,11 +13,6 @@ from flowger.infrastructure.sqlite import (
     SqliteTransactionRepository,
     init_db,
 )
-
-
-def _is_container() -> bool:
-    """Return True when running inside a Docker container."""
-    return os.path.exists("/.dockerenv")
 
 
 def export(
@@ -32,10 +29,7 @@ def export(
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
     output = get_effective_value(output, settings.default_export_file)
-    # Resolve: CLI flag > Docker env (BANK/COUNTRY) > .env defaults
-    resolved_bank = get_effective_value(bank, settings.bank) or settings.default_bank
-    resolved_country = get_effective_value(country, settings.country) or settings.default_country
-    bank, country = validate_bank_country(resolved_bank, resolved_country)
+    bank, country = resolve_bank_country(settings, bank, country)
     init_db(settings.database_path)
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)
@@ -72,7 +66,7 @@ def export(
         export_service=exporter,
     )
 
-    path_label = f"{output} (container path)" if _is_container() else output
+    path_label = f"{output} (container path)" if is_container() else output
     typer.echo(
         f"Exporting transactions for account {account_id} ({bank}/{country}) "
         f"to {path_label}..."
@@ -90,7 +84,7 @@ def export(
             f"Export complete. {count} transaction(s) saved to {output}.",
             fg=typer.colors.GREEN,
         )
-        if _is_container() is True:
+        if is_container() is True:
             typer.echo(
                 "  (This is a container path — check the bind-mounted host directory, "
                 "e.g., ./exports/)"

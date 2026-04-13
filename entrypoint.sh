@@ -53,9 +53,22 @@ ACTUAL_RUN_GID="$(id -g appuser)"
 # ── Fix bind-mount permissions ──────────────────────────────────────────────
 # Chown only the top-level directories and only when the owner already differs.
 # Avoiding a recursive walk keeps startup fast even as /data and /exports grow.
+# Some rootless/Docker Desktop setups silently ignore chown, so verify afterward.
 for dir in /data /exports; do
   if [ -e "$dir" ] && [ "$(stat -c '%u:%g' "$dir" 2>/dev/null || true)" != "$ACTUAL_RUN_UID:$ACTUAL_RUN_GID" ]; then
     chown "$ACTUAL_RUN_UID:$ACTUAL_RUN_GID" "$dir" 2>/dev/null || true
+  fi
+  if [ -e "$dir" ] && ! runuser -u appuser -- test -w "$dir" 2>/dev/null; then
+    echo ""
+    echo "  ERROR: '$dir' is not writable by appuser (UID:GID $ACTUAL_RUN_UID:$ACTUAL_RUN_GID)."
+    echo ""
+    echo "  The bind mount permissions could not be adjusted for the container user."
+    echo "  This can happen on Docker Desktop or rootless Docker where chown is ignored."
+    echo ""
+    echo "  Fix: set PUID/PGID to match your host user (run 'id -u' and 'id -g' on your host)"
+    echo "  or adjust the host directory permissions, then restart the container."
+    echo ""
+    exit 1
   fi
 done
 
