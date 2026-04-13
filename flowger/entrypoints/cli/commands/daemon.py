@@ -155,11 +155,13 @@ def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | N
         # Step 2: Authorize via docker compose exec — poll until accounts appear
         typer.echo("To complete setup, run this command in another terminal:\n")
         typer.secho(
-            f"  docker compose exec flowger-{bank.lower()} flowger authorize --code <CODE>",
+            "  docker compose exec --user appuser <SERVICE_NAME> flowger authorize --code <CODE>",
             fg=typer.colors.CYAN,
         )
         typer.echo(
-            "\nThe daemon will detect the authorized account automatically and start syncing.\n"
+            "\nReplace <SERVICE_NAME> with your Compose service name "
+            "(e.g. run `docker compose ps` to find it).\n"
+            "The daemon will detect the authorized account automatically and start syncing.\n"
         )
 
         account_repo = SqliteAccountRepository(settings.database_path)

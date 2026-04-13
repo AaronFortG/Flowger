@@ -13,7 +13,7 @@ def test_settings_validation_fails_without_required_env(monkeypatch: pytest.Monk
     with pytest.raises(ValidationError) as exc_info:
         Settings(_env_file=None)
 
-    # Only enablebanking_app_id is required; enablebanking_key_path has a default
+    # Both enablebanking_app_id and enablebanking_key_path are required
     assert "enablebanking_app_id" in str(exc_info.value)
 
 
@@ -28,11 +28,12 @@ def test_settings_loads_valid_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.enablebanking_key_path == "/tmp/mock.key"
 
 
-def test_settings_key_path_defaults_to_container_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ensure enablebanking_key_path defaults to /keys/private.pem when not set."""
+def test_settings_key_path_is_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure enablebanking_key_path is required — no default exists so Docker ENV supplies it."""
     monkeypatch.setenv("ENABLEBANKING_APP_ID", "test-app-id")
     monkeypatch.delenv("ENABLEBANKING_KEY_PATH", raising=False)
 
-    settings = Settings(_env_file=None)
+    with pytest.raises(ValidationError) as exc_info:
+        Settings(_env_file=None)
 
-    assert settings.enablebanking_key_path == "/keys/private.pem"
+    assert "enablebanking_key_path" in str(exc_info.value)

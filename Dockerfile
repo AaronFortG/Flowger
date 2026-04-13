@@ -56,6 +56,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Default environment variables for container use
 ENV DATABASE_PATH=/data/flowger.db
 ENV DEFAULT_EXPORT_FILE=/exports/transactions.csv
+ENV ENABLEBANKING_KEY_PATH=/keys/private.pem
 ENV PYTHONUNBUFFERED=1
 
 # No USER directive — entrypoint.sh runs as root, fixes permissions, then

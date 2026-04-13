@@ -1,3 +1,5 @@
+import os
+
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
@@ -9,6 +11,11 @@ from flowger.infrastructure.sqlite import (
     SqliteTransactionRepository,
     init_db,
 )
+
+
+def _is_container() -> bool:
+    """Return True when running inside a Docker container."""
+    return os.path.exists("/.dockerenv")
 
 
 def export(
@@ -65,9 +72,10 @@ def export(
         export_service=exporter,
     )
 
+    path_label = f"{output} (container path)" if _is_container() else output
     typer.echo(
         f"Exporting transactions for account {account_id} ({bank}/{country}) "
-        f"to {output} (container path)..."
+        f"to {path_label}..."
     )
     count = use_case.execute(
         account_id=account_id,
@@ -82,10 +90,11 @@ def export(
             f"Export complete. {count} transaction(s) saved to {output}.",
             fg=typer.colors.GREEN,
         )
-        typer.echo(
-            "  (This is a container path — check the bind-mounted host directory, "
-            "e.g., ./exports/)"
-        )
+        if _is_container() is True:
+            typer.echo(
+                "  (This is a container path — check the bind-mounted host directory, "
+                "e.g., ./exports/)"
+            )
     else:
         msg = f"No {'new ' if new_only is True else ''}transactions found for account {account_id}."
         typer.secho(msg, fg=typer.colors.YELLOW)

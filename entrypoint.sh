@@ -6,17 +6,28 @@ set -e
 RUN_UID="${PUID:-10001}"
 RUN_GID="${PGID:-10001}"
 
-# Create the group if it doesn't already exist
-if ! getent group appgroup > /dev/null 2>&1; then
-  groupadd -g "$RUN_GID" appgroup 2>/dev/null || true
+# Resolve the runtime group.
+# 1. If appgroup already exists (image default), keep using it.
+# 2. Else if another group owns RUN_GID, reuse that group.
+# 3. Else create appgroup with RUN_GID.
+if getent group appgroup > /dev/null 2>&1; then
+  RUN_GROUP="appgroup"
+else
+  EXISTING_GROUP="$(getent group "$RUN_GID" | cut -d: -f1 || true)"
+  if [ -n "$EXISTING_GROUP" ]; then
+    RUN_GROUP="$EXISTING_GROUP"
+  else
+    groupadd -g "$RUN_GID" appgroup
+    RUN_GROUP="appgroup"
+  fi
 fi
 
 # Create or update the appuser with the desired UID/GID
 if ! id appuser > /dev/null 2>&1; then
-  useradd -u "$RUN_UID" -g appgroup -M -s /bin/sh appuser
+  useradd -u "$RUN_UID" -g "$RUN_GROUP" -M -s /bin/sh appuser
 else
   # User exists — update UID/GID if they differ from the image defaults
-  usermod -u "$RUN_UID" -g appgroup appuser 2>/dev/null || true
+  usermod -u "$RUN_UID" -g "$RUN_GROUP" appuser 2>/dev/null || true
 fi
 
 # ── Fix bind-mount permissions ──────────────────────────────────────────────

@@ -85,7 +85,7 @@ docker compose logs -f flowger-imagin
 Open the URL, authenticate with your bank, then copy the `code` from the redirected URL (`?code=...`). Complete setup with:
 
 ```bash
-docker compose exec flowger-imagin flowger authorize --code <CODE>
+docker compose exec --user appuser flowger-imagin flowger authorize --code <CODE>
 ```
 
 The daemon detects the account automatically, runs the initial sync, exports CSV files to `./exports/`, and starts the scheduled loop.
@@ -338,7 +338,7 @@ All services share the same `db` volume, so transactions from all banks land in 
 Run any CLI command and exit:
 
 ```bash
-docker compose exec flowger-imagin flowger accounts
+docker compose exec --user appuser flowger-imagin flowger accounts
 ```
 
 ---

@@ -1,11 +1,5 @@
-from pathlib import Path
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-# Determine whether to load .env file (for local dev); Docker users
-# inject environment variables directly and have no .env file.
-_ENV_FILE = ".env" if Path(".env").exists() else None
 
 
 class Settings(BaseSettings):
@@ -16,8 +10,7 @@ class Settings(BaseSettings):
         ..., description="Application ID from Enable Banking"
     )
     enablebanking_key_path: str = Field(
-        "/keys/private.pem",
-        description="Path to the RSA private key used for JWT signing",
+        ..., description="Path to the RSA private key used for JWT signing"
     )
 
     # Bank scope (required for Docker daemon mode)
@@ -53,7 +46,7 @@ class Settings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
 
