@@ -89,6 +89,30 @@ def test_daemon_starts_normally_when_accounts_exist(mock_settings: MagicMock) ->
     assert "Starting Flowger daemon" in result.output
 
 
+def test_daemon_fails_when_accounts_exist_but_no_session(mock_settings: MagicMock) -> None:
+    """Daemon must fail fast with a clear message when accounts exist but session is missing."""
+    mock_ar = MagicMock()
+    mock_ar.get_accounts.return_value = [MagicMock()]
+
+    mock_sr = MagicMock()
+    mock_sr.get_latest_session.return_value = None  # Session missing
+
+    with (
+        patch(f"{_MODULE}.get_settings", return_value=mock_settings),
+        patch(f"{_MODULE}.init_db"),
+        patch(f"{_MODULE}.SqliteAccountRepository", return_value=mock_ar),
+        patch(f"{_MODULE}.SqliteSessionRepository", return_value=mock_sr),
+    ):
+        runner = CliRunner()
+        result = runner.invoke(
+            app, ["daemon", "--bank", "Imagin", "--country", "ES", "--cron", "0 3 * * *"]
+        )
+
+    assert result.exit_code == 1
+    assert "No session found" in result.output
+    assert "flowger authorize" in result.output
+
+
 def test_daemon_fails_on_missing_bank_country(mock_settings: MagicMock) -> None:
     """Verify daemon fails when bank/country are not configured."""
     mock_settings.default_bank = None

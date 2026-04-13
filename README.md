@@ -98,7 +98,7 @@ docker compose exec --user appuser flowger-imagin flowger sync                  
 docker compose exec --user appuser flowger-imagin flowger export --account-id <ID>  # Manual export
 ```
 
-> **Note:** Pass `--user appuser` to `docker compose exec` so that exported files on the host bind mount are owned by `appuser` (UID 10001) rather than root. Omit it only if you intentionally want root-owned output.
+> **Note:** Pass `--user appuser` to `docker compose exec` so that exported files on the host bind mount are owned by the container user (`appuser`, configured via `PUID`/`PGID`) rather than root. Omit it only if you intentionally want root-owned output.
 
 ---
 

@@ -72,7 +72,8 @@ def daemon(
                 "This usually means your ENABLEBANKING_APP_ID or RSA private key is invalid\n"
                 "or mismatched. Check that:\n"
                 "  1. ENABLEBANKING_APP_ID matches your Enable Banking application.\n"
-                "  2. The RSA key mounted at /keys/private.pem is the one registered there.\n"
+                f"  2. The RSA key at {settings.enablebanking_key_path} "
+                "(ENABLEBANKING_KEY_PATH) is the one registered there.\n"
                 "  3. Your Enable Banking application is active and has AIS permissions.\n",
                 fg=typer.colors.RED,
             )
@@ -87,6 +88,19 @@ def daemon(
     else:
         accounts = existing_accounts
         typer.echo(f"Found {len(accounts)} account(s) for {bank} ({country}).")
+
+        # Verify a session exists before starting the loop — otherwise every
+        # scheduled run would immediately fail with "No session found".
+        session_repo = SqliteSessionRepository(settings.database_path)
+        session = session_repo.get_latest_session(bank_name=bank, country=country)
+        if session is None:
+            typer.secho(
+                f"\nNo session found for {bank} ({country}). "
+                "The accounts exist but authorization is missing.\n"
+                "Run `flowger authorize --code <CODE>` (or re-run setup) to restore it.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
 
     typer.echo(
         f"Starting Flowger daemon for {bank} ({country}) with schedule: {resolved_cron}"
