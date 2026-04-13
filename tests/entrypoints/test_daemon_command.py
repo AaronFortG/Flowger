@@ -233,13 +233,13 @@ def test_run_export_writes_per_account_csv(mock_settings: MagicMock, tmp_path: P
         account_id="acc-1",
         bank_name="Imagin",
         country="ES",
-        output_path=str(tmp_path / "exports" / "acc-1.csv"),
+        output_path=str(tmp_path / "exports" / "imagin-es-acc-1.csv"),
     )
     assert calls[1] == call(
         account_id="acc-2",
         bank_name="Imagin",
         country="ES",
-        output_path=str(tmp_path / "exports" / "acc-2.csv"),
+        output_path=str(tmp_path / "exports" / "imagin-es-acc-2.csv"),
     )
 
 

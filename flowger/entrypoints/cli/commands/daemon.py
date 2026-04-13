@@ -287,7 +287,7 @@ def _run_export(
     )
 
     for acc in accounts:
-        output_path = os.path.join(export_dir, f"{acc.id}.csv")
+        output_path = os.path.join(export_dir, f"{bank.lower()}-{country.lower()}-{acc.id}.csv")
         count = use_case.execute(
             account_id=acc.id,
             bank_name=bank,

@@ -331,7 +331,7 @@ docker pull ghcr.io/aaronfortg/flowger:latest
 
 See the [Quick Start](#quick-start--docker-recommended) section above for the full setup.
 
-All services share the same `db` volume, so transactions from all banks land in one database. If your services also share the same `/exports` mount, make sure each service writes to a different export file by setting `DEFAULT_EXPORT_FILE` per service.
+All services share the same `db` volume, so transactions from all banks land in one database. For daemon auto-export, `DEFAULT_EXPORT_FILE` determines the export directory — Flowger writes one CSV per account using the filename `<bank>-<country>-<account_id>.csv` inside that directory. To keep exports isolated per bank when services share `/exports`, point each service's `DEFAULT_EXPORT_FILE` at a bank-specific subdirectory (for example, `/exports/imagin/export.csv` and `/exports/santander/export.csv`).
 
 ### One-shot commands
 

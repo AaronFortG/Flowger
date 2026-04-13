@@ -7,33 +7,53 @@ RUN_UID="${PUID:-10001}"
 RUN_GID="${PGID:-10001}"
 
 # Resolve the runtime group.
-# 1. If appgroup already exists (image default), keep using it.
-# 2. Else if another group owns RUN_GID, reuse that group.
-# 3. Else create appgroup with RUN_GID.
+# 1. If appgroup already exists and already has RUN_GID, use it as-is.
+# 2. Else if another group already owns RUN_GID, reuse that group.
+# 3. Else if appgroup exists with a different GID, update it to RUN_GID.
+# 4. Else create appgroup with RUN_GID.
+APPGROUP_GID=""
 if getent group appgroup > /dev/null 2>&1; then
+  APPGROUP_GID="$(getent group appgroup | cut -d: -f3)"
+fi
+EXISTING_GROUP="$(getent group "$RUN_GID" | cut -d: -f1 || true)"
+
+if [ "$APPGROUP_GID" = "$RUN_GID" ]; then
+  RUN_GROUP="appgroup"
+elif [ -n "$EXISTING_GROUP" ]; then
+  RUN_GROUP="$EXISTING_GROUP"
+elif [ -n "$APPGROUP_GID" ]; then
+  groupmod -g "$RUN_GID" appgroup
   RUN_GROUP="appgroup"
 else
-  EXISTING_GROUP="$(getent group "$RUN_GID" | cut -d: -f1 || true)"
-  if [ -n "$EXISTING_GROUP" ]; then
-    RUN_GROUP="$EXISTING_GROUP"
-  else
-    groupadd -g "$RUN_GID" appgroup
-    RUN_GROUP="appgroup"
-  fi
+  groupadd -g "$RUN_GID" appgroup
+  RUN_GROUP="appgroup"
 fi
 
 # Create or update the appuser with the desired UID/GID
 if ! id appuser > /dev/null 2>&1; then
   useradd -u "$RUN_UID" -g "$RUN_GROUP" -M -s /bin/sh appuser
 else
-  # User exists — update UID/GID if they differ from the image defaults
-  usermod -u "$RUN_UID" -g "$RUN_GROUP" appuser 2>/dev/null || true
+  # User exists — update UID/GID to match the requested values.
+  # Fail fast if the update can't be applied (e.g., UID already taken by another user).
+  if ! usermod -u "$RUN_UID" -g "$RUN_GROUP" appuser 2>/dev/null; then
+    echo ""
+    echo "  ERROR: Failed to update appuser to UID:GID $RUN_UID:$RUN_GID."
+    echo ""
+    echo "  This usually means the requested UID or GID is already in use."
+    echo "  Choose different PUID/PGID values or remove the conflicting user/group."
+    echo ""
+    exit 1
+  fi
 fi
+
+# Read back the actual UID/GID in case the image defaults were kept.
+ACTUAL_RUN_UID="$(id -u appuser)"
+ACTUAL_RUN_GID="$(id -g appuser)"
 
 # ── Fix bind-mount permissions ──────────────────────────────────────────────
 # Host bind mounts override image ownership. Ensure the runtime user owns
 # /data and /exports so it can write the SQLite DB and exported CSVs.
-chown -R "$RUN_UID:$RUN_GID" /data /exports 2>/dev/null || true
+chown -R "$ACTUAL_RUN_UID:$ACTUAL_RUN_GID" /data /exports 2>/dev/null || true
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────
 # Default key path can be overridden via ENABLEBANKING_KEY_PATH env var.
@@ -53,6 +73,17 @@ if [ ! -f "$KEY_PATH" ]; then
   echo "  3. Restart the container:"
   echo ""
   echo "       docker compose up -d"
+  echo ""
+  exit 1
+fi
+
+if [ ! -r "$KEY_PATH" ]; then
+  echo ""
+  echo "  ERROR: RSA private key exists at $KEY_PATH but is not readable."
+  echo ""
+  echo "  The file permissions may be too restrictive for the runtime user."
+  echo "  Fix the permissions on your host (e.g., chmod 644 keys/private.pem),"
+  echo "  or set PUID/PGID to match the file owner."
   echo ""
   exit 1
 fi

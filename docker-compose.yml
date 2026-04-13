@@ -49,8 +49,10 @@ services:
   # Uncomment and customize to add more banks. Each runs its own schedule.
   # All share the same `db` volume, so transactions from all banks land in one DB.
   #
-  # If you share the /exports mount, give each service a unique export file:
-  #   - DEFAULT_EXPORT_FILE=/exports/imagin-transactions.csv
+  # The auto-export writes one CSV per account (<bank>-<country>-<account_id>.csv) into
+  # the directory of DEFAULT_EXPORT_FILE. To isolate exports per bank when sharing /exports,
+  # point DEFAULT_EXPORT_FILE at a bank-specific subdirectory, e.g.:
+  #   - DEFAULT_EXPORT_FILE=/exports/imagin/export.csv   → files land in /exports/imagin/
   #
   # flowger-n26:
   #   build: .

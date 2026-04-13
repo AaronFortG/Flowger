@@ -15,6 +15,7 @@ def test_settings_validation_fails_without_required_env(monkeypatch: pytest.Monk
 
     # Both enablebanking_app_id and enablebanking_key_path are required
     assert "enablebanking_app_id" in str(exc_info.value)
+    assert "enablebanking_key_path" in str(exc_info.value)
 
 
 def test_settings_loads_valid_env(monkeypatch: pytest.MonkeyPatch) -> None:

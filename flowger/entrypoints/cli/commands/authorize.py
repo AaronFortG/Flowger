@@ -1,7 +1,11 @@
 import typer
 
 from flowger.application.authorize_session import AuthorizeSessionUseCase
-from flowger.entrypoints.cli.helpers import create_bank_provider, get_effective_value, validate_bank_country
+from flowger.entrypoints.cli.helpers import (
+    create_bank_provider,
+    get_effective_value,
+    validate_bank_country,
+)
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
