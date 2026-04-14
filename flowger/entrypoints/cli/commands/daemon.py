@@ -206,24 +206,33 @@ def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | N
 
     # Step 3: Run initial sync once accounts appear
     session = session_repo.get_latest_session(bank_name=bank, country=country)
-    if session is not None:
-        with create_bank_provider(settings) as fresh_provider:
-            transaction_repo = SqliteTransactionRepository(settings.database_path)
-            sync_use_case = SyncTransactionsUseCase(
-                provider=fresh_provider,
-                account_repository=account_repo,
-                transaction_repository=transaction_repo,
+    if session is None:
+        typer.secho(
+            "\nSetup completed but no session was found for "
+            f"{bank} ({country}).\n"
+            "Run `flowger authorize --code <CODE> --bank <BANK> --country <COUNTRY>` "
+            "to complete authorization, then restart the daemon.",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    with create_bank_provider(settings) as fresh_provider:
+        transaction_repo = SqliteTransactionRepository(settings.database_path)
+        sync_use_case = SyncTransactionsUseCase(
+            provider=fresh_provider,
+            account_repository=account_repo,
+            transaction_repository=transaction_repo,
+        )
+        failures = sync_use_case.execute(
+            session_id=session.session_id, accounts=accounts
+        )
+        if len(failures) > 0:
+            typer.secho(
+                f"\u26a0 Initial sync completed with {len(failures)} failure(s).",
+                fg=typer.colors.YELLOW,
             )
-            failures = sync_use_case.execute(
-                session_id=session.session_id, accounts=accounts
-            )
-            if len(failures) > 0:
-                typer.secho(
-                    f"\u26a0 Initial sync completed with {len(failures)} failure(s).",
-                    fg=typer.colors.YELLOW,
-                )
-            else:
-                typer.secho("\u2713 Initial sync complete.", fg=typer.colors.GREEN)
+        else:
+            typer.secho("\u2713 Initial sync complete.", fg=typer.colors.GREEN)
 
     # Step 4: Print account summary
     typer.echo("\nYour authorized accounts:\n")

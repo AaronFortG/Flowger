@@ -42,7 +42,11 @@ class Settings(BaseSettings):
     )
     default_export_file: str = Field(
         "transactions.csv",
-        description="Default output file path for the export command",
+        description=(
+            "Default output file path for the export command; in daemon mode, "
+            "its parent directory is also used as the base export directory for "
+            "per-account auto-exports"
+        ),
     )
 
     model_config = SettingsConfigDict(

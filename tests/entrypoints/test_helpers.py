@@ -1,5 +1,6 @@
-import click
 from unittest.mock import MagicMock
+
+import click
 
 import pytest
 
