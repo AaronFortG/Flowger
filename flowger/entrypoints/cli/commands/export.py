@@ -1,7 +1,11 @@
 import typer
 
 from flowger.application.export_transactions import ExportTransactionsUseCase
-from flowger.entrypoints.cli.helpers import get_effective_value, validate_bank_country
+from flowger.entrypoints.cli.helpers import (
+    get_effective_value,
+    is_container,
+    resolve_bank_country,
+)
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.exporters.csv import ActualCsvExporter
 from flowger.infrastructure.sqlite import (
@@ -25,10 +29,7 @@ def export(
     """Export transactions for a specific account to a CSV file."""
     settings = get_settings()
     output = get_effective_value(output, settings.default_export_file)
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
+    bank, country = resolve_bank_country(settings, bank, country)
     init_db(settings.database_path)
 
     transaction_repo = SqliteTransactionRepository(settings.database_path)
@@ -65,7 +66,11 @@ def export(
         export_service=exporter,
     )
 
-    typer.echo(f"Exporting transactions for account {account_id} ({bank}/{country}) to {output}...")
+    path_label = f"{output} (container path)" if is_container() else output
+    typer.echo(
+        f"Exporting transactions for account {account_id} ({bank}/{country}) "
+        f"to {path_label}..."
+    )
     count = use_case.execute(
         account_id=account_id,
         bank_name=bank,
@@ -79,6 +84,11 @@ def export(
             f"Export complete. {count} transaction(s) saved to {output}.",
             fg=typer.colors.GREEN,
         )
+        if is_container() is True:
+            typer.echo(
+                "  (This is a container path — check the bind-mounted host directory, "
+                "e.g., ./exports/)"
+            )
     else:
         msg = f"No {'new ' if new_only is True else ''}transactions found for account {account_id}."
         typer.secho(msg, fg=typer.colors.YELLOW)

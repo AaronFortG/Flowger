@@ -1,17 +1,23 @@
+import os
 import time
+import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 import typer
 from croniter import croniter
 
+from flowger.application.export_transactions import ExportTransactionsUseCase
 from flowger.application.sync_transactions import SyncTransactionsUseCase
+from flowger.domain.account import Account
+from flowger.domain.exceptions import BankProviderError
 from flowger.entrypoints.cli.helpers import (
     create_bank_provider,
     get_effective_value,
-    validate_bank_country,
+    is_container,
+    resolve_bank_country,
 )
-from flowger.infrastructure.config import get_settings
+from flowger.infrastructure.config import Settings, get_settings
+from flowger.infrastructure.exporters.csv import ActualCsvExporter
 from flowger.infrastructure.sqlite import (
     SqliteAccountRepository,
     SqliteSessionRepository,
@@ -20,41 +26,91 @@ from flowger.infrastructure.sqlite import (
 )
 
 
+
+# Seconds between polling checks during non-interactive setup
+_POLL_INTERVAL = 10
+
+
 def daemon(
     bank: str | None = typer.Option(None, "--bank", help="Bank name to sync (overrides .env)"),
     country: str | None = typer.Option(None, "--country", help="Country code (overrides .env)"),
-    cron: str = typer.Option(
-        ..., "--cron", help="Cron expression for scheduling (e.g. '0 3 * * *')"
-    ),
+    cron: str | None = typer.Option(None, "--cron", help="Cron expression for scheduling"),
 ) -> None:
     """
     Run Flowger in daemon mode, syncing transactions on a schedule.
+
+    If no accounts exist for the given bank/country, this command will
+    automatically guide you through the one-time setup (generate auth URL,
+    exchange code, initial sync) before entering the daemon loop.
     """
     settings = get_settings()
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
-    init_db(settings.database_path)
 
-    if croniter.is_valid(cron) is False:
-        typer.secho(f"Error: Invalid cron expression '{cron}'", fg=typer.colors.RED)
-        raise typer.Exit(1)
+    bank, country = resolve_bank_country(settings, bank, country)
 
-    typer.echo(f"Starting Flowger daemon for {bank} ({country}) with schedule: {cron}")
-
-    # Fail fast if no accounts exist for the given scope
-    account_repo = SqliteAccountRepository(settings.database_path)
-    if len(account_repo.get_accounts(bank_name=bank, country=country)) == 0:
+    # Resolve cron: CLI flag > settings.sync_cron (Docker env)
+    # Normalise settings.sync_cron so a whitespace-only SYNC_CRON env var falls
+    # through to the hardcoded default rather than failing cron validation.
+    effective_cron = get_effective_value(settings.sync_cron, None)
+    resolved_cron = get_effective_value(cron, effective_cron) or "0 */6 * * *"
+    if croniter.is_valid(resolved_cron) is False:
         typer.secho(
-            f"Error: No accounts found for {bank} ({country}) in the local database.\n"
-            "Please run `flowger setup` first to authorize your accounts.",
-            fg=typer.colors.RED,
+            f"Error: Invalid cron expression '{resolved_cron}'", fg=typer.colors.RED
         )
         raise typer.Exit(1)
 
+    init_db(settings.database_path)
+
+    account_repo = SqliteAccountRepository(settings.database_path)
+
+    # Check if we already have accounts for this bank/country
+    existing_accounts = account_repo.get_accounts(bank_name=bank, country=country)
+
+    if len(existing_accounts) == 0:
+        # First run — bootstrap via interactive setup
+        try:
+            accounts = _run_setup(bank, country, settings)
+        except BankProviderError as e:
+            typer.secho(
+                f"\nSetup failed: {e}\n\n"
+                "This usually means your ENABLEBANKING_APP_ID or RSA private key is invalid\n"
+                "or mismatched. Check that:\n"
+                "  1. ENABLEBANKING_APP_ID matches your Enable Banking application.\n"
+                f"  2. The RSA key at {settings.enablebanking_key_path} "
+                "(ENABLEBANKING_KEY_PATH) is the one registered there.\n"
+                "  3. Your Enable Banking application is active and has AIS permissions.\n",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+
+        if accounts is None:
+            typer.secho(
+                "\nSetup was not completed. The daemon cannot start without accounts.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+    else:
+        accounts = existing_accounts
+        typer.echo(f"Found {len(accounts)} account(s) for {bank} ({country}).")
+
+        # Verify a session exists before starting the loop — otherwise every
+        # scheduled run would immediately fail with "No session found".
+        session_repo = SqliteSessionRepository(settings.database_path)
+        session = session_repo.get_latest_session(bank_name=bank, country=country)
+        if session is None:
+            typer.secho(
+                f"\nNo session found for {bank} ({country}). "
+                "The accounts exist but authorization is missing.\n"
+                "Run `flowger authorize --code <CODE>` (or re-run setup) to restore it.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+
+    typer.echo(
+        f"Starting Flowger daemon for {bank} ({country}) with schedule: {resolved_cron}"
+    )
+
     # Seed the iterator once to prevent drift from re-calculating from "now"
-    cron_iter = croniter(cron, datetime.now(timezone.utc))
+    cron_iter = croniter(resolved_cron, datetime.now(timezone.utc))
 
     while True:
         try:
@@ -70,8 +126,7 @@ def daemon(
                 time.sleep(sleep_seconds)
 
             typer.echo(f"\n[{datetime.now(timezone.utc).isoformat()}] Running scheduled sync...")
-            if _run_sync(bank, country, settings) is True:
-                typer.echo("Sync completed successfully.")
+            _run_sync(bank, country, settings)
 
         except KeyboardInterrupt:
             typer.echo("\nDaemon stopped by user.")
@@ -82,10 +137,124 @@ def daemon(
             time.sleep(60)
             # Re-seed from now after an error to ensure we don't try to "catch up"
             # on multiple missed runs if the error persists for a long time.
-            cron_iter = croniter(cron, datetime.now(timezone.utc))
+            cron_iter = croniter(resolved_cron, datetime.now(timezone.utc))
 
 
-def _run_sync(bank: str, country: str, settings: Any) -> bool:
+def _run_setup(bank: str, country: str, settings: Settings) -> list[Account] | None:
+    """
+    First-time setup: generate auth URL, then poll the database until the
+    user authorizes via `docker compose exec <service> flowger authorize --code <CODE>`.
+
+    Always uses polling so it works regardless of detached/attached mode.
+    """
+    typer.secho(
+        f"\nNo accounts found for {bank} ({country}). Starting first-time setup...\n",
+        fg=typer.colors.YELLOW,
+    )
+
+    # Step 1: Generate auth URL — scope the provider to just this call so the
+    # HTTP client is not held open during the potentially long polling wait.
+    with create_bank_provider(settings) as provider:
+        random_state = uuid.uuid4().hex
+        url = provider.start_authorization(
+            bank_name=bank,
+            country=country,
+            redirect_url=settings.default_redirect_url,
+            state=random_state,
+        )
+
+    typer.echo("Open the following URL in your browser to authenticate:\n")
+    typer.secho(url, fg=typer.colors.CYAN)
+    typer.echo(
+        "\nAfter logging in, you will be redirected to a URL containing '?code=...'."
+        "\nCopy the value of the 'code' parameter from the address bar.\n"
+    )
+
+    # Step 2: Authorize via docker compose exec — poll until accounts appear
+    typer.echo("To complete setup, run this command in another terminal:\n")
+    typer.secho(
+        "  docker compose exec --user appuser <SERVICE_NAME> flowger authorize --code <CODE>",
+        fg=typer.colors.CYAN,
+    )
+    typer.echo(
+        "\nReplace <SERVICE_NAME> with your Compose service name "
+        "(e.g. run `docker compose ps` to find it).\n"
+        "The daemon will detect the authorized account automatically and start syncing.\n"
+    )
+
+    account_repo = SqliteAccountRepository(settings.database_path)
+    session_repo = SqliteSessionRepository(settings.database_path)
+
+    try:
+        while True:
+            accounts = account_repo.get_accounts(bank_name=bank, country=country)
+            if len(accounts) > 0:
+                typer.secho(
+                    "\u2713 Account detected. Proceeding with initial sync...\n",
+                    fg=typer.colors.GREEN,
+                )
+                break
+
+            time.sleep(_POLL_INTERVAL)
+            typer.echo("  Waiting for authorization...")
+    except KeyboardInterrupt:
+        typer.secho(
+            "\nSetup cancelled while waiting for authorization.",
+            fg=typer.colors.YELLOW,
+        )
+        return None
+
+    # Step 3: Run initial sync once accounts appear
+    session = session_repo.get_latest_session(bank_name=bank, country=country)
+    if session is None:
+        typer.secho(
+            "\nSetup completed but no session was found for "
+            f"{bank} ({country}).\n"
+            "Run `flowger authorize --code <CODE> --bank <BANK> --country <COUNTRY>` "
+            "to complete authorization, then restart the daemon.",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    with create_bank_provider(settings) as fresh_provider:
+        transaction_repo = SqliteTransactionRepository(settings.database_path)
+        sync_use_case = SyncTransactionsUseCase(
+            provider=fresh_provider,
+            account_repository=account_repo,
+            transaction_repository=transaction_repo,
+        )
+        failures = sync_use_case.execute(
+            session_id=session.session_id, accounts=accounts
+        )
+        if len(failures) > 0:
+            typer.secho(
+                f"\u26a0 Initial sync completed with {len(failures)} failure(s).",
+                fg=typer.colors.YELLOW,
+            )
+        else:
+            typer.secho("\u2713 Initial sync complete.", fg=typer.colors.GREEN)
+
+    # Step 4: Print account summary
+    typer.echo("\nYour authorized accounts:\n")
+    typer.echo(
+        f"{'Bank':<15} {'Country':<8} {'ID':<40} {'IBAN':<26} {'Name':<20} Currency"
+    )
+    typer.echo("-" * 120)
+    for acc in accounts:
+        typer.echo(
+            f"{acc.bank_name:<15} {acc.country:<8} {acc.id:<40} "
+            f"{acc.iban:<26} {acc.name:<20} {acc.currency}"
+        )
+
+    typer.secho(
+        "\n\u2713 Setup complete. Daemon will now start syncing on schedule.",
+        fg=typer.colors.GREEN,
+    )
+
+    return accounts
+
+
+def _run_sync(bank: str, country: str, settings: Settings) -> bool:
     session_repo = SqliteSessionRepository(settings.database_path)
     session = session_repo.get_latest_session(bank_name=bank, country=country)
 
@@ -121,4 +290,42 @@ def _run_sync(bank: str, country: str, settings: Any) -> bool:
             typer.secho(f"Sync completed with {len(failures)} failures.", fg=typer.colors.YELLOW)
             return False
 
+    typer.secho("Sync completed successfully.", fg=typer.colors.GREEN)
+
+    # Auto-export: one CSV per account in the same directory as default_export_file
+    _run_export(accounts, bank, country, settings)
+
     return True
+
+
+def _run_export(
+    accounts: list[Account], bank: str, country: str, settings: Settings
+) -> None:
+    """Export each account's transactions to a CSV file."""
+    export_dir = os.path.dirname(settings.default_export_file) or "."
+    if not os.path.isdir(export_dir):
+        os.makedirs(export_dir, exist_ok=True)
+
+    transaction_repo = SqliteTransactionRepository(settings.database_path)
+    exporter = ActualCsvExporter(delimiter=",", safe=True)
+    use_case = ExportTransactionsUseCase(
+        transaction_repository=transaction_repo,
+        export_service=exporter,
+    )
+
+    for acc in accounts:
+        output_path = os.path.join(export_dir, f"{bank.lower()}-{country.lower()}-{acc.id}.csv")
+        count = use_case.execute(
+            account_id=acc.id,
+            bank_name=bank,
+            country=country,
+            output_path=output_path,
+        )
+        if count > 0:
+            suffix = " (container path)" if is_container() else ""
+            typer.secho(
+                f"  Exported {count} transaction(s) \u2192 {output_path}{suffix}",
+                fg=typer.colors.GREEN,
+            )
+        else:
+            typer.echo(f"  No transactions to export for {acc.id}.")

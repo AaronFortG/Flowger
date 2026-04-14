@@ -1,3 +1,4 @@
+import os
 from typing import overload
 
 import typer
@@ -12,6 +13,11 @@ def create_bank_provider(settings: Settings) -> EnableBankingProvider:
         app_id=settings.enablebanking_app_id,
         private_key_path=settings.enablebanking_key_path,
     )
+
+
+def is_container() -> bool:
+    """Return True when running inside a Docker container."""
+    return os.path.exists("/.dockerenv")
 
 
 @overload
@@ -33,6 +39,21 @@ def get_effective_value(val: str | None, default: str | None) -> str | None:
     return default
 
 
+def resolve_bank_country(
+    settings: Settings,
+    bank_opt: str | None,
+    country_opt: str | None,
+) -> tuple[str, str]:
+    """Resolve and validate bank/country using CLI flag > Docker env > .env default precedence."""
+    # Normalise settings.bank/country first — a whitespace-only env var must be
+    # treated as absent, otherwise it shadows settings.default_bank/country.
+    effective_bank = get_effective_value(settings.bank, None)
+    effective_country = get_effective_value(settings.country, None)
+    resolved_bank = get_effective_value(bank_opt, effective_bank) or settings.default_bank
+    resolved_country = get_effective_value(country_opt, effective_country) or settings.default_country
+    return validate_bank_country(resolved_bank, resolved_country)
+
+
 def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, str]:
     """Ensure bank and country are specified and normalized, otherwise exit with error."""
     # Normalize inputs (strip whitespace and handle None)
@@ -42,9 +63,10 @@ def validate_bank_country(bank: str | None, country: str | None) -> tuple[str, s
     if len(normalized_bank) == 0 or len(normalized_country) == 0:
         typer.secho(
             "\nError: Bank and Country must be specified.\n\n"
-            "Use --bank and --country options, or set them in your .env file as:\n"
-            "  DEFAULT_BANK=...\n"
-            "  DEFAULT_COUNTRY=...",
+            "  Docker:  set BANK and COUNTRY in your docker-compose.yml environment block.\n"
+            "  Local:   use --bank and --country options, or set in your .env file as:\n"
+            "             DEFAULT_BANK=...\n"
+            "             DEFAULT_COUNTRY=...",
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)

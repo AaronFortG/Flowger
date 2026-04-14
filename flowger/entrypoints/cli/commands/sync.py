@@ -3,8 +3,7 @@ import typer
 from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.entrypoints.cli.helpers import (
     create_bank_provider,
-    get_effective_value,
-    validate_bank_country,
+    resolve_bank_country,
 )
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
@@ -21,10 +20,7 @@ def sync(
 ) -> None:
     """Fetch transactions for all synced accounts and persist them locally."""
     settings = get_settings()
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
+    bank, country = resolve_bank_country(settings, bank, country)
     init_db(settings.database_path)
 
     session_repo = SqliteSessionRepository(settings.database_path)

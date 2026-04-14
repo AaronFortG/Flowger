@@ -37,12 +37,18 @@ COPY --from=builder /app/.venv /app/.venv
 COPY flowger/ ./flowger/
 COPY pyproject.toml ./
 
+# Copy entrypoint validation script and set permissions
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create a non-root user for security (UID 10001)
 RUN useradd --create-home --uid 10001 appuser && \
     mkdir -p /data /exports /keys && \
-    chown -R appuser:appuser /app /data /exports /keys
+    chown -R appuser:appuser /app /entrypoint.sh
 
-USER appuser
+# Note: /data, /exports, /keys are bind-mounted from the host, so ownership
+# is set at runtime by the entrypoint script (which runs as root and then
+# drops to appuser).
 
 # Put the venv on PATH so `flowger` CLI script resolves correctly
 ENV PATH="/app/.venv/bin:$PATH"
@@ -50,10 +56,11 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Default environment variables for container use
 ENV DATABASE_PATH=/data/flowger.db
 ENV DEFAULT_EXPORT_FILE=/exports/transactions.csv
+ENV ENABLEBANKING_KEY_PATH=/keys/private.pem
 ENV PYTHONUNBUFFERED=1
 
-# Persistence volumes
-VOLUME ["/data", "/exports", "/keys"]
+# No USER directive — entrypoint.sh runs as root, fixes permissions, then
+# drops to appuser before exec'ing the real command.
 
-ENTRYPOINT ["flowger"]
-CMD ["--help"]
+ENTRYPOINT ["/entrypoint.sh", "flowger"]
+CMD ["daemon"]

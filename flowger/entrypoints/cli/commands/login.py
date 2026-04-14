@@ -2,7 +2,10 @@ import uuid
 
 import typer
 
-from flowger.entrypoints.cli.helpers import create_bank_provider, validate_bank_country
+from flowger.entrypoints.cli.helpers import (
+    create_bank_provider,
+    resolve_bank_country,
+)
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import init_db
 
@@ -13,9 +16,7 @@ def login(
 ) -> None:
     """Generate an authorization URL to connect a bank account."""
     settings = get_settings()
-    bank, country = validate_bank_country(
-        bank or settings.default_bank, country or settings.default_country
-    )
+    bank, country = resolve_bank_country(settings, bank, country)
     init_db(settings.database_path)
 
     with create_bank_provider(settings) as provider:

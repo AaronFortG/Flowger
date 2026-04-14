@@ -7,8 +7,7 @@ from flowger.application.sync_transactions import SyncTransactionsUseCase
 from flowger.domain.exceptions import BankProviderError
 from flowger.entrypoints.cli.helpers import (
     create_bank_provider,
-    get_effective_value,
-    validate_bank_country,
+    resolve_bank_country,
 )
 from flowger.infrastructure.config import get_settings
 from flowger.infrastructure.sqlite import (
@@ -30,10 +29,7 @@ def setup(
     You will be prompted to open a URL in your browser and paste back the code.
     """
     settings = get_settings()
-    bank, country = validate_bank_country(
-        get_effective_value(bank, settings.default_bank),
-        get_effective_value(country, settings.default_country),
-    )
+    bank, country = resolve_bank_country(settings, bank, country)
     init_db(settings.database_path)
 
     with create_bank_provider(settings) as provider:

@@ -39,6 +39,8 @@ def _make_accounts() -> list[Account]:
 def mock_settings(tmp_path: Path) -> MagicMock:
     settings = MagicMock()
     settings.database_path = str(tmp_path / "test.db")
+    settings.bank = None
+    settings.country = None
     settings.default_bank = "Imagin"
     settings.default_country = "ES"
     settings.default_redirect_url = "https://enablebanking.com/ais/"
@@ -194,6 +196,8 @@ def test_setup_fails_when_bank_country_missing(mock_settings: MagicMock) -> None
     """Verify setup fails with a validation error when bank and country
     are missing from options and settings."""
     # Set settings to None to simulate missing .env values
+    mock_settings.bank = None
+    mock_settings.country = None
     mock_settings.default_bank = None
     mock_settings.default_country = None
 
